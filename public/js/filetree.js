@@ -129,9 +129,13 @@ VZ.filetree = {
       this.previewPath = filePath;
       this.showPreview = true;
       this.$nextTick(() => {
-        document.querySelectorAll('#preview-modal pre code').forEach(el => {
+        const el = document.getElementById('preview-code');
+        if (el) {
+          el.textContent = data.content;
+          el.removeAttribute('data-highlighted');
+          delete el.dataset.highlighted;
           hljs.highlightElement(el);
-        });
+        }
       });
     } catch (err) {
       VZ.utils.notify('Preview failed', 'error');

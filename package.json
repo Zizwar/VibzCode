@@ -5,7 +5,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "pm2": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop vibzcode",
+    "pm2:restart": "pm2 restart vibzcode",
+    "pm2:logs": "pm2 logs vibzcode"
   },
   "type": "module",
   "keywords": [

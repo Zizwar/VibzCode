@@ -7,6 +7,7 @@ document.addEventListener('alpine:init', () => {
     currentTab: 'prompt',
     loading: false,
     showPreview: false,
+    showSelectedModal: false,
     notifications: [],
 
     // File State
