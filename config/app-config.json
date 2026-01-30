@@ -1,0 +1,7 @@
+{
+  "maxFileSizeMB": 50,
+  "defaultModel": "openai/gpt-5.1-codex-mini",
+  "enableCache": true,
+  "autoSelectImportant": true,
+  "streamResponses": true
+}

@@ -13,50 +13,63 @@ import dotenv from 'dotenv'
 import database from './config/database.js'
 import openrouter from './utils/openrouter.js'
 
-// Load environment variables
 dotenv.config()
 
 const app = new Hono()
+const PORT = process.env.PORT || 8080;
 
-const PORT =8080;
 app.use('/*', cors())
-app.use("/", serveStatic({ root: "./public" }));
+app.use("/js/*", serveStatic({ root: "./public" }));
+app.use("/*", serveStatic({ root: "./public" }));
 
 const uploadsDir = path.join(process.cwd(), 'uploads');
 const groupsDir = path.join(process.cwd(), 'filegroups');
 const promptTemplatesDir = path.join(process.cwd(), 'prompttemplates');
+const configDir = path.join(process.cwd(), 'config');
 
-// Create necessary directories if they don't exist
-[uploadsDir, groupsDir, promptTemplatesDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir);
-  }
+[uploadsDir, groupsDir, promptTemplatesDir, configDir].forEach(dir => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Create default prompt templates if they don't exist
+// Default prompt templates
 const defaultTemplates = [
-  {
-    name: "Code Analysis",
-    content: "Please analyze the following code and provide insights on its architecture, design patterns, and potential improvements:\n\n"
-  },
-  {
-    name: "Bug Finding",
-    content: "Please review the following code and identify any bugs, security vulnerabilities, or performance issues:\n\n"
-  },
-  {
-    name: "Documentation Generator",
-    content: "Please generate comprehensive documentation for the following code including function descriptions, parameters, and usage examples:\n\n"
-  },
-  {
-    name: "Code Refactoring",
-    content: "Please suggest refactoring for the following code to improve its readability, maintainability, and performance:\n\n"
-  }
+  { name: "Code Analysis", content: "Please analyze the following code and provide insights on its architecture, design patterns, and potential improvements:\n\n" },
+  { name: "Bug Finding", content: "Please review the following code and identify any bugs, security vulnerabilities, or performance issues:\n\n" },
+  { name: "Documentation Generator", content: "Please generate comprehensive documentation for the following code including function descriptions, parameters, and usage examples:\n\n" },
+  { name: "Code Refactoring", content: "Please suggest refactoring for the following code to improve its readability, maintainability, and performance:\n\n" }
 ];
 
 const templateFilePath = path.join(promptTemplatesDir, 'default-templates.json');
 if (!fs.existsSync(templateFilePath)) {
   fs.writeFileSync(templateFilePath, JSON.stringify(defaultTemplates, null, 2));
 }
+
+// Default config files
+const modelsConfigPath = path.join(configDir, 'models.json');
+const appConfigPath = path.join(configDir, 'app-config.json');
+
+if (!fs.existsSync(modelsConfigPath)) {
+  fs.writeFileSync(modelsConfigPath, JSON.stringify({
+    models: [
+      { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini", provider: "OpenAI", enabled: true },
+      { id: "openai/gpt-5.1-codex-mini", name: "GPT-5.1 Codex Mini", provider: "OpenAI", enabled: true }
+    ]
+  }, null, 2));
+}
+
+if (!fs.existsSync(appConfigPath)) {
+  fs.writeFileSync(appConfigPath, JSON.stringify({
+    maxFileSizeMB: 50,
+    defaultModel: "openai/gpt-5.1-codex-mini",
+    enableCache: true,
+    autoSelectImportant: true,
+    streamResponses: true
+  }, null, 2));
+}
+
+// ============================================
+// HELPERS
+// ============================================
 
 async function fetchFileFromUrl(url) {
   const response = await fetch(url);
@@ -68,148 +81,142 @@ async function fetchFromGitHub(url, branch = 'main') {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'github-'));
   try {
     execSync(`git clone --depth 1 --branch ${branch} ${url} ${tempDir}`, { stdio: 'inherit' });
-
     const zip = new AdmZip();
     const addFilesToZip = (dir, zipPath = '') => {
       const files = fs.readdirSync(dir, { withFileTypes: true });
       for (const file of files) {
         const filePath = path.join(dir, file.name);
         if (file.isDirectory()) {
-          if (file.name !== '.git') {
-            addFilesToZip(filePath, path.join(zipPath, file.name));
-          }
+          if (file.name !== '.git') addFilesToZip(filePath, path.join(zipPath, file.name));
         } else {
           zip.addLocalFile(filePath, zipPath);
         }
       }
     };
     addFilesToZip(tempDir);
-
     return zip.toBuffer();
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
 
-// Detect important files in a project
 function identifyImportantFiles(entries) {
   const importantPatterns = [
-    /package\.json$/, 
-    /composer\.json$/,
-    /requirements\.txt$/,
-    /Gemfile$/,
-    /Cargo\.toml$/,
-    /pom\.xml$/,
-    /build\.gradle$/,
-    /\.gitignore$/,
-    /docker-compose\.yml$/,
-    /Dockerfile$/,
-    /README\.md$/i,
+    /package\.json$/, /composer\.json$/, /requirements\.txt$/, /Gemfile$/,
+    /Cargo\.toml$/, /pom\.xml$/, /build\.gradle$/, /\.gitignore$/,
+    /docker-compose\.yml$/, /Dockerfile$/, /README\.md$/i,
     /^(main|index|app)\.(js|ts|py|java|go|rb|php)$/,
-    /server\.(js|ts)$/,
-    /config\.(js|json|yaml|yml)$/
+    /server\.(js|ts)$/, /config\.(js|json|yaml|yml)$/,
+    /deno\.json$/, /mod\.ts$/
   ];
-  
-  const importantFiles = [];
-  
-  entries.forEach(entry => {
-    const fileName = path.basename(entry.entryName);
-    const isImportant = importantPatterns.some(pattern => pattern.test(fileName) || pattern.test(entry.entryName));
-    if (isImportant) {
-      importantFiles.push(entry.entryName);
-    }
-  });
-  
-  return importantFiles;
+  return entries
+    .filter(entry => {
+      const fileName = path.basename(entry.entryName);
+      return importantPatterns.some(p => p.test(fileName) || p.test(entry.entryName));
+    })
+    .map(e => e.entryName);
 }
 
-// Summarize code for reducing output size
 function summarizeCode(content, filePath) {
-  // Simple strategy: remove comments and format consistently
   try {
-    // Determine file extension
     const ext = path.extname(filePath).toLowerCase();
-    
-    // Remove comments based on file type
     let cleanedContent = stripComments(content);
-    
-    // Basic formatting based on file type
-    if (ext === '.js' || ext === '.ts' || ext === '.jsx' || ext === '.tsx') {
-      cleanedContent = beautify.js(cleanedContent, { indent_size: 2 });
-    } else if (ext === '.html' || ext === '.xml') {
-      cleanedContent = beautify.html(cleanedContent, { indent_size: 2 });
-    } else if (ext === '.css') {
-      cleanedContent = beautify.css(cleanedContent, { indent_size: 2 });
-    }
-    
+    if (['.js','.ts','.jsx','.tsx'].includes(ext)) cleanedContent = beautify.js(cleanedContent, { indent_size: 2 });
+    else if (['.html','.xml'].includes(ext)) cleanedContent = beautify.html(cleanedContent, { indent_size: 2 });
+    else if (ext === '.css') cleanedContent = beautify.css(cleanedContent, { indent_size: 2 });
     return cleanedContent;
-  } catch (error) {
-    console.error(`Error summarizing ${filePath}:`, error);
-    return content; // Return original content if summarization fails
+  } catch {
+    return content;
   }
 }
 
+function buildFileStructure(entries) {
+  const structure = {};
+  entries.forEach(entry => {
+    const parts = entry.entryName.split('/');
+    let current = structure;
+    parts.forEach((part, index) => {
+      if (index === parts.length - 1) {
+        current[part] = { type: 'file', path: entry.entryName };
+      } else {
+        if (!current[part]) current[part] = { type: 'directory', children: {} };
+        current = current[part].children;
+      }
+    });
+  });
+  return structure;
+}
+
+function getMaxFileSize() {
+  const mb = parseInt(process.env.MAX_FILE_SIZE_MB || '50');
+  return mb * 1024 * 1024;
+}
+
+// ============================================
+// FILE UPLOAD & MANAGEMENT
+// ============================================
+
 app.post('/upload', async (c) => {
   try {
-    const formData = await c.req.formData()
-    const file = formData.get('zipFile')
-    const url = formData.get('url')
-    const branch = formData.get('branch') || 'main'
+    const formData = await c.req.formData();
+    const file = formData.get('zipFile');
+    const url = formData.get('url');
+    const branch = formData.get('branch') || 'main';
 
-    let buffer;
-    let filename;
+    let buffer, filename;
+
     if (file) {
-      buffer = await file.arrayBuffer()
+      buffer = await file.arrayBuffer();
       filename = file.name;
     } else if (url) {
       if (url.includes('github.com')) {
         buffer = await fetchFromGitHub(url, branch);
-        filename = url.split('/').pop() + '.zip';
+        filename = url.split('/').pop().replace(/\.git$/, '') + '.zip';
       } else {
         buffer = await fetchFileFromUrl(url);
-        filename = url.split('/').pop();
+        filename = url.split('/').pop() || 'download.zip';
       }
     } else {
-      return c.json({ error: 'No file or URL provided' }, 400)
+      return c.json({ error: 'No file or URL provided' }, 400);
+    }
+
+    // Check file size
+    const maxSize = getMaxFileSize();
+    if (buffer.byteLength > maxSize) {
+      const maxMB = Math.round(maxSize / 1024 / 1024);
+      return c.json({ error: `File too large (${Math.round(buffer.byteLength / 1024 / 1024)}MB). Maximum: ${maxMB}MB` }, 413);
     }
 
     const filePath = path.join(uploadsDir, filename);
     fs.writeFileSync(filePath, Buffer.from(buffer));
 
-    const zip = new AdmZip(Buffer.from(buffer))
-    const zipEntries = zip.getEntries()
-    const fileStructure = buildFileStructure(zipEntries)
-    const importantFiles = identifyImportantFiles(zipEntries)
-    
-    return c.json({ fileStructure, filename, importantFiles })
-  } catch (error) {
-    console.error('Error in /upload:', error)
-    return c.json({ error: 'Internal server error: ' + error.message }, 500)
-  }
-})
+    const zip = new AdmZip(Buffer.from(buffer));
+    const zipEntries = zip.getEntries();
+    const fileStructure = buildFileStructure(zipEntries);
+    const importantFiles = identifyImportantFiles(zipEntries);
 
-app.get('/file-preview/:filename/:filepath(*)', async (c) => {
+    return c.json({ fileStructure, filename, importantFiles, size: buffer.byteLength });
+  } catch (error) {
+    console.error('Error in /upload:', error);
+    return c.json({ error: 'Upload failed: ' + error.message }, 500);
+  }
+});
+
+app.get('/file-preview/:filename/:filepath{.+}', async (c) => {
   try {
     const filename = c.req.param('filename');
     const filepath = c.req.param('filepath');
     const filePath = path.join(uploadsDir, filename);
-    
-    if (!fs.existsSync(filePath)) {
-      return c.json({ error: 'File not found' }, 404);
-    }
+    if (!fs.existsSync(filePath)) return c.json({ error: 'File not found' }, 404);
 
     const zip = new AdmZip(filePath);
     const entry = zip.getEntry(filepath);
-    
-    if (!entry) {
-      return c.json({ error: 'File not found in ZIP' }, 404);
-    }
-    
-    const content = entry.getData().toString('utf8');
-    return c.json({ content });
+    if (!entry) return c.json({ error: 'File not found in ZIP' }, 404);
+
+    return c.json({ content: entry.getData().toString('utf8') });
   } catch (error) {
     console.error('Error in /file-preview:', error);
-    return c.json({ error: 'Internal server error: ' + error.message }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
@@ -217,71 +224,55 @@ app.get('/reopen/:filename', async (c) => {
   try {
     const filename = c.req.param('filename');
     const filePath = path.join(uploadsDir, filename);
-    
-    if (!fs.existsSync(filePath)) {
-      return c.json({ error: 'File not found' }, 404);
-    }
+    if (!fs.existsSync(filePath)) return c.json({ error: 'File not found' }, 404);
 
     const zip = new AdmZip(filePath);
     const zipEntries = zip.getEntries();
-    const fileStructure = buildFileStructure(zipEntries);
-    const importantFiles = identifyImportantFiles(zipEntries);
-    
-    return c.json({ fileStructure, filename, importantFiles });
+    return c.json({
+      fileStructure: buildFileStructure(zipEntries),
+      filename,
+      importantFiles: identifyImportantFiles(zipEntries)
+    });
   } catch (error) {
     console.error('Error in /reopen:', error);
-    return c.json({ error: 'Internal server error: ' + error.message }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
 app.post('/extract', async (c) => {
   try {
-    const formData = await c.req.formData()
-    const filesString = formData.get('files')
-    const filename = formData.get('filename')
-    const summarize = formData.get('summarize') === 'true'
+    const formData = await c.req.formData();
+    const filesString = formData.get('files');
+    const filename = formData.get('filename');
+    const summarize = formData.get('summarize') === 'true';
 
-    if (!filename || !filesString) return c.json({ error: 'Missing filename or file list' }, 400)
-    const files = JSON.parse(filesString)
+    if (!filename || !filesString) return c.json({ error: 'Missing filename or file list' }, 400);
+    const files = JSON.parse(filesString);
 
     const filePath = path.join(uploadsDir, filename);
-    if (!fs.existsSync(filePath)) {
-      return c.json({ error: 'File not found' }, 404);
-    }
+    if (!fs.existsSync(filePath)) return c.json({ error: 'File not found' }, 404);
 
-    const zip = new AdmZip(filePath)
+    const zip = new AdmZip(filePath);
     const extractedContent = files.map(file => {
-      const entry = zip.getEntry(file)
-      if (entry) {
-        let content = entry.getData().toString('utf8')
-        if (file.endsWith('.json')) {
-          try {
-            const jsonObj = JSON.parse(content)
-            content = JSON.stringify(jsonObj, null, 2)
-          } catch (e) {
-            console.error('Error parsing JSON:', e)
-          }
-        }
-        
-        // Apply summarization if requested
-        if (summarize) {
-          content = summarizeCode(content, file);
-        }
-        
-        return `// ${file}\n${content}`
+      const entry = zip.getEntry(file);
+      if (!entry) return `// ${file}\nFile not found in the ZIP archive.`;
+      let content = entry.getData().toString('utf8');
+      if (file.endsWith('.json')) {
+        try { content = JSON.stringify(JSON.parse(content), null, 2); } catch {}
       }
-      return `// ${file}\nFile not found in the ZIP archive.`
-    }).join('\n\n')
-    return c.json({ content: extractedContent })
+      if (summarize) content = summarizeCode(content, file);
+      return `// ${file}\n${content}`;
+    }).join('\n\n');
+
+    return c.json({ content: extractedContent });
   } catch (error) {
-    console.error('Error in /extract:', error)
-    return c.json({ error: 'Internal server error: ' + error.message }, 500)
+    console.error('Error in /extract:', error);
+    return c.json({ error: error.message }, 500);
   }
-})
+});
 
 app.get('/uploads', (c) => {
-  const files = fs.readdirSync(uploadsDir);
-  return c.json(files);
+  return c.json(fs.readdirSync(uploadsDir));
 });
 
 app.delete('/upload/:filename', (c) => {
@@ -289,158 +280,171 @@ app.delete('/upload/:filename', (c) => {
   const filePath = path.join(uploadsDir, filename);
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
-    return c.json({ message: 'File deleted successfully' });
-  } else {
-    return c.json({ error: 'File not found' }, 404);
+    return c.json({ message: 'Deleted' });
   }
+  return c.json({ error: 'File not found' }, 404);
 });
 
-// Get prompt templates
+// ============================================
+// PROMPT TEMPLATES
+// ============================================
+
 app.get('/prompt-templates', (c) => {
   try {
-    const templateFilePath = path.join(promptTemplatesDir, 'default-templates.json');
     if (fs.existsSync(templateFilePath)) {
-      const templates = JSON.parse(fs.readFileSync(templateFilePath, 'utf8'));
-      return c.json(templates);
-    } else {
-      return c.json(defaultTemplates);
+      return c.json(JSON.parse(fs.readFileSync(templateFilePath, 'utf8')));
     }
+    return c.json(defaultTemplates);
   } catch (error) {
-    console.error('Error getting prompt templates:', error);
-    return c.json({ error: 'Internal server error: ' + error.message }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
-// Save file group
+// ============================================
+// FILE GROUPS
+// ============================================
+
 app.post('/file-groups', async (c) => {
   try {
     const formData = await c.req.formData();
     const name = formData.get('name');
     const filesString = formData.get('files');
     const filename = formData.get('filename');
-    
-    if (!name || !filesString || !filename) {
-      return c.json({ error: 'Missing required fields' }, 400);
-    }
-    
-    const groupData = {
-      name,
-      filename,
-      files: JSON.parse(filesString),
-      createdAt: new Date().toISOString()
-    };
-    
+    if (!name || !filesString || !filename) return c.json({ error: 'Missing fields' }, 400);
+
+    const groupData = { name, filename, files: JSON.parse(filesString), createdAt: new Date().toISOString() };
     const groupFilePath = path.join(groupsDir, `${name.replace(/[^a-z0-9]/gi, '_')}.json`);
     fs.writeFileSync(groupFilePath, JSON.stringify(groupData, null, 2));
-    
-    return c.json({ message: 'Group saved successfully', id: path.basename(groupFilePath, '.json') });
+    return c.json({ message: 'Saved', id: path.basename(groupFilePath, '.json') });
   } catch (error) {
-    console.error('Error saving file group:', error);
-    return c.json({ error: 'Internal server error: ' + error.message }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
-// Get file groups
 app.get('/file-groups', (c) => {
   try {
-    const files = fs.readdirSync(groupsDir);
-    const groups = files
-      .filter(file => file.endsWith('.json'))
-      .map(file => {
-        const content = fs.readFileSync(path.join(groupsDir, file), 'utf8');
-        return JSON.parse(content);
-      });
+    const groups = fs.readdirSync(groupsDir)
+      .filter(f => f.endsWith('.json'))
+      .map(f => JSON.parse(fs.readFileSync(path.join(groupsDir, f), 'utf8')));
     return c.json(groups);
   } catch (error) {
-    console.error('Error getting file groups:', error);
-    return c.json({ error: 'Internal server error: ' + error.message }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
-// Delete file group
 app.delete('/file-groups/:name', (c) => {
   try {
     const name = c.req.param('name');
-    const groupFilePath = path.join(groupsDir, `${name}.json`);
-    
-    if (fs.existsSync(groupFilePath)) {
-      fs.unlinkSync(groupFilePath);
-      return c.json({ message: 'Group deleted successfully' });
-    } else {
-      return c.json({ error: 'Group not found' }, 404);
-    }
+    const filePath = path.join(groupsDir, `${name}.json`);
+    if (fs.existsSync(filePath)) { fs.unlinkSync(filePath); return c.json({ message: 'Deleted' }); }
+    return c.json({ error: 'Not found' }, 404);
   } catch (error) {
-    console.error('Error deleting file group:', error);
-    return c.json({ error: 'Internal server error: ' + error.message }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
-function buildFileStructure(entries) {
-  const structure = {}
-  entries.forEach(entry => {
-    const path = entry.entryName.split('/')
-    let current = structure
-    path.forEach((part, index) => {
-      if (index === path.length - 1) {
-        current[part] = {
-          type: 'file',
-          path: entry.entryName
-        }
+// ============================================
+// APP CONFIG API
+// ============================================
+
+app.get('/api/config', (c) => {
+  try {
+    return c.json(JSON.parse(fs.readFileSync(appConfigPath, 'utf8')));
+  } catch {
+    return c.json({ maxFileSizeMB: 50, defaultModel: 'openai/gpt-5.1-codex-mini', enableCache: true, autoSelectImportant: true });
+  }
+});
+
+app.put('/api/config', async (c) => {
+  try {
+    const body = await c.req.json();
+    fs.writeFileSync(appConfigPath, JSON.stringify(body, null, 2));
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+app.get('/api/config/models', (c) => {
+  try {
+    return c.json(JSON.parse(fs.readFileSync(modelsConfigPath, 'utf8')));
+  } catch {
+    return c.json({ models: [] });
+  }
+});
+
+app.put('/api/config/models', async (c) => {
+  try {
+    const body = await c.req.json();
+    fs.writeFileSync(modelsConfigPath, JSON.stringify(body, null, 2));
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Environment config (dev only)
+app.get('/api/config/env', (c) => {
+  return c.json({
+    STORAGE_MODE: process.env.STORAGE_MODE || 'local',
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ? '********' : '',
+    DEFAULT_AI_MODEL: process.env.DEFAULT_AI_MODEL || '',
+    MAX_FILE_SIZE_MB: process.env.MAX_FILE_SIZE_MB || '50',
+  });
+});
+
+app.put('/api/config/env', async (c) => {
+  try {
+    const body = await c.req.json();
+    const envPath = path.join(process.cwd(), '.env');
+    let envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+
+    for (const [key, value] of Object.entries(body)) {
+      if (value === '********') continue; // Skip masked values
+      const regex = new RegExp(`^${key}=.*$`, 'm');
+      if (envContent.match(regex)) {
+        envContent = envContent.replace(regex, `${key}=${value}`);
       } else {
-        if (!current[part]) {
-          current[part] = {
-            type: 'directory',
-            children: {}
-          }
-        }
-        current = current[part].children
+        envContent += `\n${key}=${value}`;
       }
-    })
-  })
-  return structure
-}
+      process.env[key] = value;
+    }
+    fs.writeFileSync(envPath, envContent);
+
+    // Reinitialize openrouter if API key changed
+    if (body.OPENROUTER_API_KEY && body.OPENROUTER_API_KEY !== '********') {
+      openrouter.reinit();
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ error: error.message }, 500);
+  }
+});
 
 // ============================================
-// AI CHAT ENDPOINTS
+// AI CHAT
 // ============================================
 
-// Get available AI models
 app.get('/api/ai/models', (c) => {
   try {
-    if (!openrouter.enabled) {
-      return c.json({ error: 'AI features are not enabled. Please configure OPENROUTER_API_KEY.' }, 503);
-    }
-    const models = openrouter.getAvailableModels();
-    return c.json(models);
-  } catch (error) {
-    console.error('Error getting AI models:', error);
-    return c.json({ error: 'Failed to get AI models' }, 500);
+    const configModels = JSON.parse(fs.readFileSync(modelsConfigPath, 'utf8'));
+    return c.json(configModels.models || []);
+  } catch {
+    return c.json([]);
   }
 });
 
-// Send chat message to AI
 app.post('/api/ai/chat', async (c) => {
   try {
     if (!openrouter.enabled) {
-      return c.json({ error: 'AI features are not enabled. Please configure OPENROUTER_API_KEY.' }, 503);
+      return c.json({ error: 'AI not configured. Set OPENROUTER_API_KEY in Settings > API.' }, 503);
     }
 
-    const formData = await c.req.formData();
-    const message = formData.get('message');
-    const projectId = formData.get('projectId');
-    const model = formData.get('model');
-    const contextFiles = formData.get('contextFiles');
+    const body = await c.req.json();
+    const { message, model, contextFiles, projectId, enableCache } = body;
 
-    if (!message) {
-      return c.json({ error: 'Message is required' }, 400);
-    }
-
-    // Build context from selected files
-    let contextContent = '';
-    if (contextFiles) {
-      const files = JSON.parse(contextFiles);
-      contextContent = `\n\nProject Context:\n${files}`;
-    }
+    if (!message) return c.json({ error: 'Message is required' }, 400);
 
     // Get chat history
     let chatHistory = [];
@@ -448,38 +452,48 @@ app.post('/api/ai/chat', async (c) => {
       chatHistory = await database.getChatHistory(projectId);
     }
 
-    // Build messages array
-    const messages = [
-      ...chatHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      {
-        role: 'user',
-        content: message + contextContent
-      }
-    ];
+    // Build messages with optional prompt caching
+    const messages = [];
 
-    // Get AI response
+    // System message
+    messages.push({
+      role: 'system',
+      content: 'You are VibZcode AI assistant. You help analyze, explain, and improve code. Be concise and precise. Use markdown formatting.'
+    });
+
+    // Context files (with cache_control if enabled)
+    if (contextFiles) {
+      const contextMsg = {
+        role: 'user',
+        content: enableCache ? [
+          { type: 'text', text: `Project files for context:\n\n${contextFiles}`, cache_control: { type: 'ephemeral' } }
+        ] : `Project files for context:\n\n${contextFiles}`
+      };
+      messages.push(contextMsg);
+      messages.push({ role: 'assistant', content: 'I have the project files. What would you like to know?' });
+    }
+
+    // Chat history
+    chatHistory.forEach(msg => {
+      messages.push({ role: msg.role, content: msg.content });
+    });
+
+    // Current message
+    messages.push({ role: 'user', content: message });
+
     const response = await openrouter.chat(messages, model);
 
-    // Save to chat history
+    // Save to history
     if (projectId) {
-      await database.saveChatMessage(projectId, {
-        role: 'user',
-        content: message
-      });
-      await database.saveChatMessage(projectId, {
-        role: 'assistant',
-        content: response.content,
-        model: response.model
-      });
+      await database.saveChatMessage(projectId, { role: 'user', content: message });
+      await database.saveChatMessage(projectId, { role: 'assistant', content: response.content, model: response.model });
     }
 
     return c.json({
       response: response.content,
       model: response.model,
-      usage: response.usage
+      usage: response.usage,
+      cached: response.usage?.cache_read_input_tokens > 0
     });
   } catch (error) {
     console.error('Error in AI chat:', error);
@@ -487,120 +501,98 @@ app.post('/api/ai/chat', async (c) => {
   }
 });
 
-// Get chat history
 app.get('/api/ai/chat/:projectId', async (c) => {
   try {
     const projectId = c.req.param('projectId');
-    const history = await database.getChatHistory(projectId);
-    return c.json(history);
+    return c.json(await database.getChatHistory(projectId));
   } catch (error) {
-    console.error('Error getting chat history:', error);
-    return c.json({ error: 'Failed to get chat history' }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
 // ============================================
-// AI ANALYSIS ENDPOINTS
+// AI ANALYSIS & AGENTS
 // ============================================
 
-// Analyze project with AI
 app.post('/api/ai/analyze', async (c) => {
   try {
-    if (!openrouter.enabled) {
-      return c.json({ error: 'AI features are not enabled. Please configure OPENROUTER_API_KEY.' }, 503);
-    }
-
+    if (!openrouter.enabled) return c.json({ error: 'AI not configured' }, 503);
     const formData = await c.req.formData();
     const projectContent = formData.get('content');
     const analysisType = formData.get('type') || 'general';
-
-    if (!projectContent) {
-      return c.json({ error: 'Project content is required' }, 400);
-    }
+    if (!projectContent) return c.json({ error: 'Content required' }, 400);
 
     const analysis = await openrouter.analyzeProject(projectContent, analysisType);
-
-    return c.json({
-      analysis: analysis.content,
-      model: analysis.model,
-      usage: analysis.usage
-    });
+    return c.json({ analysis: analysis.content, model: analysis.model, usage: analysis.usage });
   } catch (error) {
-    console.error('Error analyzing project:', error);
-    return c.json({ error: 'Analysis failed: ' + error.message }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
-// Run AI agent
 app.post('/api/ai/agent/:type', async (c) => {
   try {
-    if (!openrouter.enabled) {
-      return c.json({ error: 'AI features are not enabled. Please configure OPENROUTER_API_KEY.' }, 503);
-    }
-
+    if (!openrouter.enabled) return c.json({ error: 'AI not configured' }, 503);
     const agentType = c.req.param('type');
     const formData = await c.req.formData();
     const codeContent = formData.get('content');
-
-    if (!codeContent) {
-      return c.json({ error: 'Code content is required' }, 400);
-    }
+    if (!codeContent) return c.json({ error: 'Content required' }, 400);
 
     const result = await openrouter.runAgent(agentType, codeContent);
-
-    return c.json({
-      result: result.content,
-      agent: agentType,
-      model: result.model
-    });
+    return c.json({ result: result.content, agent: agentType, model: result.model });
   } catch (error) {
-    console.error('Error running AI agent:', error);
-    return c.json({ error: 'Agent failed: ' + error.message }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
-// Get available agents
 app.get('/api/ai/agents', (c) => {
-  const agents = [
-    { id: 'security', name: 'Security Analyzer', icon: '🔒' },
-    { id: 'performance', name: 'Performance Optimizer', icon: '⚡' },
-    { id: 'documentation', name: 'Documentation Generator', icon: '📚' },
-    { id: 'refactoring', name: 'Refactoring Expert', icon: '🔄' },
-    { id: 'testing', name: 'Testing Agent', icon: '🧪' }
-  ];
-  return c.json(agents);
+  return c.json([
+    { id: 'security', name: 'Security Analyzer', icon: 'shield' },
+    { id: 'performance', name: 'Performance Optimizer', icon: 'zap' },
+    { id: 'documentation', name: 'Documentation Generator', icon: 'book' },
+    { id: 'refactoring', name: 'Refactoring Expert', icon: 'recycle' },
+    { id: 'testing', name: 'Testing Agent', icon: 'flask' }
+  ]);
 });
 
 // ============================================
-// PROJECT MANAGEMENT ENDPOINTS
+// PROJECTS
 // ============================================
 
-// Get all projects
 app.get('/api/projects', async (c) => {
   try {
-    const projects = await database.getProjects('default');
-    return c.json(projects);
+    return c.json(await database.getProjects('default'));
   } catch (error) {
-    console.error('Error getting projects:', error);
-    return c.json({ error: 'Failed to get projects' }, 500);
+    return c.json({ error: error.message }, 500);
   }
 });
 
-// Initialize database connection
+// ============================================
+// SPA FALLBACK - serve index.html for /get/* routes
+// ============================================
+
+app.get('/get/*', (c) => {
+  const indexPath = path.join(process.cwd(), 'public', 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return c.html(fs.readFileSync(indexPath, 'utf8'));
+  }
+  return c.text('Not found', 404);
+});
+
+// ============================================
+// START SERVER
+// ============================================
+
 await database.connect();
 
-serve({
-  fetch: app.fetch,
-  port: PORT
-})
+serve({ fetch: app.fetch, port: PORT });
 
-console.log('🚀 Server is running on http://localhost:' + PORT)
-console.log('📦 Storage Mode:', process.env.STORAGE_MODE || 'local')
-console.log('🤖 AI Features:', openrouter.enabled ? 'Enabled' : 'Disabled (Set OPENROUTER_API_KEY to enable)')
+console.log('VibZcode server running on http://localhost:' + PORT);
+console.log('Storage:', process.env.STORAGE_MODE || 'local');
+console.log('AI:', openrouter.enabled ? 'Enabled' : 'Disabled (set OPENROUTER_API_KEY)');
+console.log('Max upload:', (process.env.MAX_FILE_SIZE_MB || 50) + 'MB');
 
-// Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n👋 Shutting down gracefully...');
+  console.log('\nShutting down...');
   await database.close();
   process.exit(0);
 });

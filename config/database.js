@@ -43,7 +43,7 @@ class Database {
       try {
         mongoClient = new MongoClient(mongoUri);
         await mongoClient.connect();
-        db = mongoClient.db('zip2prompt');
+        db = mongoClient.db('vibzcode');
         console.log('✅ Connected to MongoDB Atlas');
 
         // Create indexes

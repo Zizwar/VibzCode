@@ -1,8 +1,7 @@
 {
-  "name": "zip2prompt",
-  "version": "1.0.0",
+  "name": "vibzcode",
+  "version": "2.0.0",
   "main": "server.js",
-  "start": "node server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
@@ -19,7 +18,7 @@
   ],
   "author": "Brahim BIDI",
   "license": "ISC",
-  "description": "Interactive AI-powered code analysis platform - Upload projects and chat with multiple AI models",
+  "description": "VibZcode - AI-powered code exploration and chat platform",
   "dependencies": {
     "@hono/node-server": "^1.12.0",
     "adm-zip": "^0.5.14",

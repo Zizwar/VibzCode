@@ -1,805 +1,550 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZIP 2 Prompt</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.10.3/cdn.min.js" defer></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <style>
-        [x-cloak] { display: none !important; }
-        .rtl-exception { direction: ltr !important; }
-        .code-preview {
-            max-height: 400px;
-            overflow-y: auto;
-            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-        }
-        .modal {
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-        .modal-content {
-            max-width: 90%;
-            max-height: 90vh;
-            overflow: auto;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VibZcode</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/upload.js"></script>
+  <script src="/js/filetree.js"></script>
+  <script src="/js/chat.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/app.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: oklch(var(--bc) / 0.15); border-radius: 4px; }
+    .fade-in { animation: fadeIn .2s ease-out; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:translateY(0) } }
+    .chat-md h1,.chat-md h2,.chat-md h3 { font-weight:700; margin:.5em 0 }
+    .chat-md h1 { font-size:1.2em } .chat-md h2 { font-size:1.1em } .chat-md h3 { font-size:1.05em }
+    .chat-md p { margin:.4em 0 }
+    .chat-md pre { background:oklch(var(--b3)); padding:.7em; border-radius:.5em; overflow-x:auto; margin:.5em 0; font-size:.82em }
+    .chat-md code { font-size:.88em }
+    .chat-md :not(pre)>code { background:oklch(var(--b3)); padding:.1em .3em; border-radius:.25em }
+    .chat-md ul,.chat-md ol { padding-left:1.4em; margin:.4em 0 }
+    .chat-md li { margin:.2em 0 }
+    .chat-md blockquote { border-left:3px solid oklch(var(--p)); padding-left:.8em; opacity:.85; margin:.5em 0 }
+    .chat-md a { color:oklch(var(--p)); text-decoration:underline }
+    .chat-md table { width:100%; border-collapse:collapse; margin:.5em 0 }
+    .chat-md th,.chat-md td { border:1px solid oklch(var(--bc) / 0.1); padding:.4em .6em; text-align:left }
+    .chat-md th { font-weight:600; background:oklch(var(--b2)) }
+    .chat-md hr { border-color:oklch(var(--bc) / 0.1); margin:.8em 0 }
+  </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 transition-colors duration-200" 
-      x-data="zip2Prompt()" 
-      x-init="init()" 
-      x-cloak
-      :dir="currentLang === 'ar' ? 'rtl' : 'ltr'">
-    <div class="container mx-auto p-4">
-        <header class="flex justify-between items-center mb-6 bg-blue-600 dark:bg-blue-800 p-4 rounded-lg">
-            <h1 class="text-3xl font-bold text-white" x-text="translations[currentLang].title"></h1>
-            <div class="space-x-2 rtl:space-x-reverse">
-                <button @click="toggleDarkMode" class="px-3 py-1 rounded bg-blue-500 dark:bg-blue-700 text-white">
-                    <i :class="darkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
-                </button>
-                <select x-model="currentLang" class="px-3 py-1 rounded bg-blue-500 dark:bg-blue-700 text-white">
-                    <option value="en">English</option>
-                    <option value="ar">العربية</option>
-                </select>
-            </div>
-        </header>
+<body class="min-h-screen bg-base-100" x-data="vibzcode">
 
-        <div class="mb-6 bg-white dark:bg-gray-700 p-4 rounded-lg shadow">
-            <label :for="translations[currentLang].promptLabel" class="block mb-2 font-semibold" x-text="translations[currentLang].promptLabel"></label>
-            
-            <div class="mb-4">
-                <select x-model="selectedTemplate" @change="applyTemplate" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
-                    <option value="" x-text="translations[currentLang].selectTemplate"></option>
-                    <template x-for="template in promptTemplates" :key="template.name">
-                        <option :value="template.name" x-text="template.name"></option>
-                    </template>
-                </select>
-            </div>
-            
-            <textarea :id="translations[currentLang].promptLabel" x-model="mainPrompt" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500" rows="3"></textarea>
+  <!-- DRAWER LAYOUT -->
+  <div class="drawer lg:drawer-open">
+    <input id="sidebar" type="checkbox" class="drawer-toggle">
+
+    <!-- MAIN CONTENT -->
+    <div class="drawer-content flex flex-col min-h-screen">
+
+      <!-- NAVBAR -->
+      <nav class="navbar bg-base-200/80 backdrop-blur border-b border-base-300 sticky top-0 z-30 px-3 min-h-12">
+        <div class="flex-none lg:hidden">
+          <label for="sidebar" class="btn btn-ghost btn-sm btn-square">
+            <i class="fas fa-bars"></i>
+          </label>
+        </div>
+        <div class="flex-1 gap-2">
+          <span class="text-lg font-bold tracking-tight"><span class="text-primary">Vibz</span>code</span>
+          <div class="badge badge-ghost badge-sm truncate max-w-40" x-show="currentFilename" x-text="currentFilename" x-cloak></div>
+        </div>
+        <div class="flex-none flex items-center gap-1.5">
+          <div class="badge badge-outline badge-sm gap-1 font-mono" x-show="tokenCount > 0" x-cloak>
+            <i class="fas fa-coins text-[10px]"></i>
+            <span x-text="'~' + formatTokens(tokenCount)"></span>
+          </div>
+          <select class="select select-bordered select-xs w-36 hidden sm:inline-flex" x-model="selectedModel">
+            <template x-for="m in enabledModels()" :key="m.id">
+              <option :value="m.id" x-text="m.name"></option>
+            </template>
+          </select>
+          <label class="swap swap-rotate btn btn-ghost btn-sm btn-circle">
+            <input type="checkbox" :checked="darkMode" @change="toggleDarkMode()">
+            <i class="fas fa-sun swap-off text-sm"></i>
+            <i class="fas fa-moon swap-on text-sm"></i>
+          </label>
+          <button class="btn btn-ghost btn-sm btn-circle" @click="showSettings = true; fetchEnvConfig()">
+            <i class="fas fa-cog text-sm"></i>
+          </button>
+        </div>
+      </nav>
+
+      <!-- MAIN AREA -->
+      <main class="flex-1 flex flex-col p-3 sm:p-4 gap-3 max-w-5xl mx-auto w-full">
+
+        <!-- TABS -->
+        <div role="tablist" class="tabs tabs-boxed bg-base-200 p-1 self-start">
+          <a role="tab" class="tab tab-sm gap-1.5" :class="{'tab-active': currentTab === 'prompt'}" @click="currentTab = 'prompt'">
+            <i class="fas fa-terminal text-xs"></i> <span class="hidden sm:inline">Prompt</span>
+          </a>
+          <a role="tab" class="tab tab-sm gap-1.5" :class="{'tab-active': currentTab === 'chat'}" @click="currentTab = 'chat'">
+            <i class="fas fa-comments text-xs"></i> <span class="hidden sm:inline">Chat</span>
+            <div class="badge badge-xs badge-primary" x-show="chatMessages.length" x-text="chatMessages.length" x-cloak></div>
+          </a>
+          <a role="tab" class="tab tab-sm gap-1.5" :class="{'tab-active': currentTab === 'output'}" @click="currentTab = 'output'">
+            <i class="fas fa-code text-xs"></i> <span class="hidden sm:inline">Output</span>
+          </a>
         </div>
 
-        <div class="mb-6 bg-white dark:bg-gray-700 p-4 rounded-lg shadow">
-            <div class="flex border-b border-gray-200 dark:border-gray-600">
-                <button @click="activeTab = 'file'" :class="{ 'border-b-2 border-blue-500': activeTab === 'file' }" class="py-2 px-4 text-blue-600 dark:text-blue-400">
-                    <i class="fas fa-file-archive mr-2"></i>
-                    <span x-text="translations[currentLang].fileTab"></span>
-                </button>
-                <button @click="activeTab = 'url'" :class="{ 'border-b-2 border-blue-500': activeTab === 'url' }" class="py-2 px-4 text-blue-600 dark:text-blue-400">
-                    <i class="fas fa-link mr-2"></i>
-                    <span x-text="translations[currentLang].urlTab"></span>
-                </button>
-                <button @click="activeTab = 'github'" :class="{ 'border-b-2 border-blue-500': activeTab === 'github' }" class="py-2 px-4 text-blue-600 dark:text-blue-400">
-                    <i class="fab fa-github mr-2"></i>
-                    <span x-text="translations[currentLang].githubTab"></span>
-                </button>
-            </div>
+        <!-- PROMPT TAB -->
+        <div x-show="currentTab === 'prompt'" x-cloak class="flex flex-col gap-3 flex-1">
+          <div class="flex gap-2 flex-wrap">
+            <select class="select select-bordered select-sm flex-1 min-w-[160px]" x-model="selectedTemplate" @change="applyTemplate()">
+              <option value="">Select template...</option>
+              <template x-for="t in promptTemplates" :key="t.name">
+                <option :value="t.name" x-text="t.name"></option>
+              </template>
+            </select>
+            <select class="select select-bordered select-sm sm:hidden flex-1 min-w-[140px]" x-model="selectedModel">
+              <template x-for="m in enabledModels()" :key="m.id">
+                <option :value="m.id" x-text="m.name"></option>
+              </template>
+            </select>
+          </div>
 
-            <div x-show="activeTab === 'file'" class="mt-4">
-                <div 
-                    @dragover.prevent="$event.target.classList.add('bg-blue-100')"
-                    @dragleave.prevent="$event.target.classList.remove('bg-blue-100')"
-                    @drop.prevent="handleFileDrop($event)"
-                    class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50 transition duration-150"
-                >
-                    <i class="fas fa-cloud-upload-alt text-4xl mb-4 text-blue-500"></i>
-                    <p x-text="translations[currentLang].dragDropText"></p>
-                    <input type="file" @change="handleFileUpload" accept=".zip" class="hidden" id="fileInput">
-                    <label for="fileInput" class="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-blue-600 transition duration-150">
-                        <span x-text="translations[currentLang].selectFile"></span>
-                    </label>
-                </div>
-            </div>
+          <textarea class="textarea textarea-bordered flex-1 min-h-[180px] font-mono text-sm leading-relaxed resize-y"
+            x-model="mainPrompt"
+            @input="updateTokenCount(); saveSession()"
+            placeholder="Write your prompt here... Selected files will be appended when extracted."></textarea>
 
-            <div x-show="activeTab === 'url'" class="mt-4">
-                <input type="text" x-model="urlInput" :placeholder="translations[currentLang].urlPlaceholder" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
-                <button @click="handleUrlUpload" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-150">
-                    <i class="fas fa-upload mr-2"></i>
-                    <span x-text="translations[currentLang].uploadFromUrl"></span>
-                </button>
-            </div>
+          <!-- Quick Actions -->
+          <div class="flex flex-wrap gap-1.5">
+            <button class="btn btn-xs btn-outline gap-1" @click="runQuickAction('explain')" :disabled="selectedFiles.length===0">
+              <i class="fas fa-lightbulb"></i> Explain
+            </button>
+            <button class="btn btn-xs btn-outline gap-1" @click="runQuickAction('bugs')" :disabled="selectedFiles.length===0">
+              <i class="fas fa-bug"></i> Bugs
+            </button>
+            <button class="btn btn-xs btn-outline gap-1" @click="runQuickAction('improve')" :disabled="selectedFiles.length===0">
+              <i class="fas fa-wand-magic-sparkles"></i> Improve
+            </button>
+            <button class="btn btn-xs btn-outline gap-1" @click="runQuickAction('tests')" :disabled="selectedFiles.length===0">
+              <i class="fas fa-flask"></i> Tests
+            </button>
+            <button class="btn btn-xs btn-outline gap-1" @click="runQuickAction('docs')" :disabled="selectedFiles.length===0">
+              <i class="fas fa-book"></i> Docs
+            </button>
+            <button class="btn btn-xs btn-outline gap-1" @click="runQuickAction('refactor')" :disabled="selectedFiles.length===0">
+              <i class="fas fa-recycle"></i> Refactor
+            </button>
+          </div>
 
-            <div x-show="activeTab === 'github'" class="mt-4">
-                <input type="text" x-model="githubUrl" :placeholder="translations[currentLang].githubUrlPlaceholder" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500 mb-2">
-                <input type="text" x-model="branchInput" :placeholder="translations[currentLang].branchPlaceholder" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
-                <button @click="handleGithubUpload" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-150">
-                    <i class="fab fa-github mr-2"></i>
-                    <span x-text="translations[currentLang].uploadFromGithub"></span>
-                </button>
+          <!-- Extract bar -->
+          <div class="card bg-base-200 p-3">
+            <div class="flex flex-wrap gap-x-4 gap-y-2 items-center">
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" x-model="includeFileStructure">
+                <span class="text-xs">Structure</span>
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" x-model="excludeMediaFiles">
+                <span class="text-xs">No media</span>
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" x-model="summarizeCode">
+                <span class="text-xs">Summarize</span>
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" x-model="enableCache">
+                <span class="text-xs">Cache</span>
+              </label>
+              <div class="flex-1"></div>
+              <div class="badge badge-ghost badge-sm" x-show="selectedFiles.length" x-cloak>
+                <span x-text="selectedFiles.length"></span>&nbsp;files
+              </div>
+              <button class="btn btn-primary btn-sm gap-1" @click="handleExtract()"
+                :disabled="!currentFilename || selectedFiles.length === 0 || loading">
+                <span class="loading loading-spinner loading-xs" x-show="loading" x-cloak></span>
+                <i class="fas fa-bolt text-xs" x-show="!loading"></i> Extract
+              </button>
             </div>
+          </div>
         </div>
 
-        <div class="mb-6 bg-white dark:bg-gray-700 p-4 rounded-lg shadow" x-show="uploadedFiles.length > 0">
-            <h2 class="text-xl font-semibold mb-2" x-text="translations[currentLang].uploadedFiles"></h2>
-            <ul>
-                <template x-for="file in uploadedFiles" :key="file">
-                    <li class="flex justify-between items-center py-2">
-                        <button @click="reopenFile(file)" class="text-blue-500 hover:text-blue-700">
-                            <i class="fas fa-folder-open mr-2"></i>
-                            <span x-text="file"></span>
-                        </button>
-                        <button @click="deleteUploadedFile(file)" class="text-red-500 hover:text-red-700">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </li>
-                </template>
-            </ul>
+        <!-- CHAT TAB -->
+        <div x-show="currentTab === 'chat'" x-cloak class="flex flex-col flex-1 gap-2">
+          <select class="select select-bordered select-sm sm:hidden w-full" x-model="selectedModel">
+            <template x-for="m in enabledModels()" :key="m.id">
+              <option :value="m.id" x-text="m.name"></option>
+            </template>
+          </select>
+
+          <div id="chat-messages" class="flex-1 overflow-y-auto scrollbar-thin space-y-1 min-h-[300px] max-h-[calc(100vh-260px)]">
+            <!-- Empty state -->
+            <div x-show="chatMessages.length === 0" class="flex flex-col items-center justify-center h-full text-base-content/30 gap-3 py-12">
+              <i class="fas fa-robot text-5xl"></i>
+              <p class="text-sm">Chat with AI about your code</p>
+              <p class="text-xs opacity-60">Select files & extract first, then ask questions</p>
+              <div class="flex flex-wrap gap-2 justify-center mt-2" x-show="selectedFiles.length > 0">
+                <button class="btn btn-xs btn-outline" @click="runQuickAction('explain')">Explain</button>
+                <button class="btn btn-xs btn-outline" @click="runQuickAction('bugs')">Find Bugs</button>
+                <button class="btn btn-xs btn-outline" @click="runQuickAction('improve')">Improve</button>
+              </div>
+            </div>
+
+            <template x-for="(msg, i) in chatMessages" :key="i">
+              <div class="fade-in" :class="msg.role === 'user' ? 'chat chat-end' : 'chat chat-start'">
+                <div class="chat-header text-[10px] opacity-50 mb-0.5">
+                  <span x-text="msg.role === 'user' ? 'You' : (msg.model || 'AI')"></span>
+                  <span x-show="msg.cached" class="badge badge-xs badge-ghost ml-1">cached</span>
+                </div>
+                <div class="chat-bubble max-w-[85%] text-sm"
+                  :class="msg.role === 'user' ? 'chat-bubble-primary' : (msg.isError ? 'chat-bubble-error' : '')">
+                  <div x-show="msg.role === 'user'" x-text="msg.content"></div>
+                  <div x-show="msg.role !== 'user'" class="chat-md" x-html="renderMarkdown(msg.content)"></div>
+                </div>
+                <div class="chat-footer text-[10px] opacity-30" x-show="msg.usage">
+                  <span x-text="msg.usage ? msg.usage.total_tokens + ' tokens' : ''"></span>
+                </div>
+              </div>
+            </template>
+
+            <div x-show="chatLoading" class="chat chat-start fade-in" x-cloak>
+              <div class="chat-bubble"><span class="loading loading-dots loading-sm"></span></div>
+            </div>
+          </div>
+
+          <div class="flex gap-2 items-end">
+            <textarea class="textarea textarea-bordered flex-1 min-h-[42px] max-h-28 text-sm resize-none"
+              x-model="chatInput"
+              @keydown.ctrl.enter.prevent="sendMessage()"
+              @keydown.meta.enter.prevent="sendMessage()"
+              placeholder="Ask about your code... (Ctrl+Enter to send)"
+              rows="1"
+              @input="$el.style.height='auto';$el.style.height=Math.min($el.scrollHeight,112)+'px'"></textarea>
+            <button class="btn btn-primary btn-sm" @click="sendMessage()" :disabled="chatLoading || !chatInput.trim()">
+              <i class="fas fa-paper-plane text-xs"></i>
+            </button>
+            <button class="btn btn-ghost btn-sm" @click="clearChat()" x-show="chatMessages.length > 0" x-cloak>
+              <i class="fas fa-trash text-xs"></i>
+            </button>
+          </div>
         </div>
 
-        <template x-if="fileStructure">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="rtl-exception bg-white dark:bg-gray-700 p-4 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-2" x-text="translations[currentLang].fileStructure"></h2>
-                    <div class="mb-4 flex flex-wrap gap-2">
-                        <button @click="selectAllFiles" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-150">
-                            <i class="fas fa-check-double mr-2"></i>
-                            <span x-text="translations[currentLang].selectAll"></span>
-                        </button>
-                        <button @click="deselectAllFiles" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition duration-150">
-                            <i class="fas fa-times mr-2"></i>
-                            <span x-text="translations[currentLang].deselectAll"></span>
-                        </button>
-                        <button @click="selectImportantFiles" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition duration-150" x-show="importantFiles.length > 0">
-                            <i class="fas fa-star mr-2"></i>
-                            <span x-text="translations[currentLang].selectImportant"></span>
-                        </button>
-                    </div>
-                    
-                    <!-- File Group Management -->
-                    <div class="mb-4 border-t border-gray-200 dark:border-gray-600 pt-2">
-                        <div class="flex gap-2 mb-2">
-                            <input type="text" x-model="newGroupName" :placeholder="translations[currentLang].groupNamePlaceholder" class="flex-grow p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
-                            <button @click="saveFileGroup" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-150">
-                                <i class="fas fa-save mr-2"></i>
-                                <span x-text="translations[currentLang].saveGroup"></span>
-                            </button>
-                        </div>
-                        
-                        <div x-show="fileGroups.length > 0" class="mb-2">
-                            <label class="block mb-1" x-text="translations[currentLang].loadGroup"></label>
-                            <select @change="loadFileGroup($event.target.value)" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
-                                <option value="" x-text="translations[currentLang].selectGroup"></option>
-                                <template x-for="group in fileGroups" :key="group.name">
-                                    <option :value="group.name" x-text="group.name"></option>
-                                </template>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="flex items-center">
-                            <input type="checkbox" x-model="excludeMediaFiles" class="mr-2">
-                            <span x-text="translations[currentLang].excludeMedia"></span>
-                        </label>
-                        <label class="flex items-center mt-2">
-                            <input type="checkbox" x-model="summarizeCode" class="mr-2">
-                            <span x-text="translations[currentLang].summarizeCode"></span>
-                        </label>
-                    </div>
-                    <div id="fileTree" class="border p-4 rounded dark:bg-gray-600 dark:border-gray-500 max-h-96 overflow-y-auto">
-                        <template x-for="(value, key) in fileStructure" :key="key">
-                            <div x-html="renderFileTree(key, value, '')"></div>
-                        </template>
-                    </div>
-                    <div class="flex justify-between mt-4">
-                        <button 
-                            @click="handleExtract"
-                            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition duration-150"
-                        >
-                            <i class="fas fa-file-export mr-2"></i>
-                            <span x-text="translations[currentLang].extractButton"></span>
-                        </button>
-                        <div class="flex items-center">
-                            <input type="checkbox" id="includeStructure" x-model="includeFileStructure" class="mr-2">
-                            <label for="includeStructure" x-text="translations[currentLang].includeStructure"></label>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-gray-700 p-4 rounded-lg shadow">
-                    <h2 class="text-xl font-semibold mb-2" x-text="translations[currentLang].mergedContent"></h2>
-                    <div class="relative">
-                        <textarea 
-                            x-model="mergedContent"
-                            readonly
-                            class="w-full h-96 p-2 border rounded dark:bg-gray-600 dark:border-gray-500 resize-none"
-                        ></textarea>
-                        <button 
-                            @click="copyToClipboard"
-                            class="absolute top-2 right-2 bg-gray-200 dark:bg-gray-600 p-2 rounded"
-                            :title="translations[currentLang].copyToClipboard"
-                        >
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                    <template x-if="mergedContent">
-                        <button 
-                            @click="downloadMergedContent"
-                            class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-150"
-                        >
-                            <i class="fas fa-download mr-2"></i>
-                            <span x-text="translations[currentLang].downloadButton"></span>
-                        </button>
-                    </template>
-                </div>
+        <!-- OUTPUT TAB -->
+        <div x-show="currentTab === 'output'" x-cloak class="flex flex-col flex-1 gap-2">
+          <div class="flex gap-2 items-center flex-wrap">
+            <div class="badge badge-ghost badge-sm font-mono" x-show="mergedContent" x-cloak>
+              <span x-text="formatTokens(VZ.utils.estimateTokens(mergedContent))"></span>&nbsp;tokens
             </div>
-        </template>
+            <div class="badge badge-ghost badge-sm" x-show="mergedContent" x-cloak>
+              <span x-text="VZ.utils.formatFileSize(new Blob([mergedContent]).size)"></span>
+            </div>
+            <div class="flex-1"></div>
+            <button class="btn btn-sm btn-outline gap-1" @click="copyOutput()" :disabled="!mergedContent">
+              <i class="fas fa-copy text-xs"></i> Copy
+            </button>
+            <button class="btn btn-sm btn-outline gap-1" @click="downloadOutput()" :disabled="!mergedContent">
+              <i class="fas fa-download text-xs"></i> Download
+            </button>
+          </div>
+          <textarea class="textarea textarea-bordered flex-1 font-mono text-xs leading-relaxed min-h-[400px] resize-y"
+            x-model="mergedContent" readonly
+            placeholder="Extracted content will appear here..."></textarea>
+        </div>
+      </main>
     </div>
 
-    <!-- File Preview Modal -->
-    <div x-show="showPreviewModal" class="fixed inset-0 flex items-center justify-center z-50 modal" @click.self="showPreviewModal = false">
-        <div class="modal-content bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold" x-text="previewFileName"></h3>
-                <button @click="showPreviewModal = false" class="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">
-                    <i class="fas fa-times"></i>
-                </button>
+    <!-- SIDEBAR -->
+    <div class="drawer-side z-40">
+      <label for="sidebar" aria-label="close sidebar" class="drawer-overlay"></label>
+      <aside class="w-80 min-h-full bg-base-200 flex flex-col border-r border-base-300">
+
+        <div class="p-3 border-b border-base-300 space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="text-lg font-bold tracking-tight"><span class="text-primary">Vibz</span>code</span>
+            <div class="flex-1"></div>
+            <label for="sidebar" class="btn btn-ghost btn-xs btn-circle lg:hidden"><i class="fas fa-times"></i></label>
+          </div>
+
+          <!-- Upload tabs -->
+          <div role="tablist" class="tabs tabs-boxed tabs-xs bg-base-300">
+            <a role="tab" class="tab gap-1" :class="{'tab-active': uploadTab === 'github'}" @click="uploadTab = 'github'">
+              <i class="fab fa-github text-xs"></i> <span class="text-xs">GitHub</span>
+            </a>
+            <a role="tab" class="tab gap-1" :class="{'tab-active': uploadTab === 'url'}" @click="uploadTab = 'url'">
+              <i class="fas fa-link text-xs"></i> <span class="text-xs">URL</span>
+            </a>
+            <a role="tab" class="tab gap-1" :class="{'tab-active': uploadTab === 'file'}" @click="uploadTab = 'file'">
+              <i class="fas fa-file-zipper text-xs"></i> <span class="text-xs">ZIP</span>
+            </a>
+          </div>
+
+          <!-- GitHub -->
+          <div x-show="uploadTab === 'github'" class="space-y-2">
+            <input type="text" class="input input-bordered input-sm w-full"
+              x-model="githubUrl" placeholder="https://github.com/user/repo"
+              @keydown.enter="uploadFromGitHub()">
+            <div class="flex gap-2">
+              <input type="text" class="input input-bordered input-sm w-20"
+                x-model="githubBranch" placeholder="main">
+              <button class="btn btn-primary btn-sm flex-1 gap-1" @click="uploadFromGitHub()" :disabled="!githubUrl || loading">
+                <span class="loading loading-spinner loading-xs" x-show="loading" x-cloak></span>
+                <i class="fas fa-cloud-arrow-down text-xs" x-show="!loading"></i> Clone
+              </button>
             </div>
-            <div class="code-preview rtl-exception">
-                <pre><code x-html="previewContent" class="hljs overflow-auto"></code></pre>
+          </div>
+
+          <!-- URL -->
+          <div x-show="uploadTab === 'url'" class="flex gap-2" x-cloak>
+            <input type="text" class="input input-bordered input-sm flex-1"
+              x-model="uploadUrl" placeholder="https://example.com/file.zip"
+              @keydown.enter="uploadFromUrl()">
+            <button class="btn btn-primary btn-sm" @click="uploadFromUrl()" :disabled="!uploadUrl || loading">
+              <i class="fas fa-download text-xs"></i>
+            </button>
+          </div>
+
+          <!-- File upload -->
+          <div x-show="uploadTab === 'file'" x-cloak>
+            <div class="border-2 border-dashed rounded-lg p-4 text-center transition-all"
+              :class="isDragging ? 'border-primary bg-primary/10' : 'border-base-300'"
+              @dragover.prevent="isDragging = true"
+              @dragleave.prevent="isDragging = false"
+              @drop.prevent="handleFileDrop($event)">
+              <i class="fas fa-cloud-arrow-up text-xl text-base-content/30 mb-1"></i>
+              <p class="text-xs text-base-content/40 mb-2">Drop ZIP here</p>
+              <input type="file" class="file-input file-input-bordered file-input-xs w-full"
+                accept=".zip" @change="uploadZipFile($event.target.files[0])">
             </div>
-            <div class="mt-4 flex justify-between">
-                <button 
-                    @click="toggleFileSelection(previewFilePath)"
-                    class="px-4 py-2 rounded transition duration-150"
-                    :class="selectedFiles.includes(previewFilePath) 
-                        ? 'bg-red-500 hover:bg-red-600 text-white' 
-                        : 'bg-green-500 hover:bg-green-600 text-white'"
-                >
-                    <i :class="selectedFiles.includes(previewFilePath) ? 'fas fa-minus' : 'fas fa-plus'" class="mr-2"></i>
-                    <span x-text="selectedFiles.includes(previewFilePath) 
-                        ? translations[currentLang].removeFromSelection 
-                        : translations[currentLang].addToSelection">
-                    </span>
-                </button>
-                <button 
-                    @click="showPreviewModal = false"
-                    class="bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 px-4 py-2 rounded transition duration-150"
-                >
-                    <span x-text="translations[currentLang].close"></span>
-                </button>
-            </div>
+          </div>
         </div>
+
+        <!-- Previous uploads -->
+        <div x-show="uploadedFiles.length > 0" x-cloak class="border-b border-base-300">
+          <details class="collapse collapse-arrow">
+            <summary class="collapse-title text-xs font-medium py-2 px-3 min-h-0">
+              Projects <span class="badge badge-xs ml-1" x-text="uploadedFiles.length"></span>
+            </summary>
+            <div class="collapse-content px-1 pb-2">
+              <template x-for="f in uploadedFiles" :key="f">
+                <div class="flex items-center gap-1 py-0.5 hover:bg-base-300 rounded px-2 group text-xs cursor-pointer"
+                  @click="reopenProject(f)">
+                  <i class="fas fa-archive text-[10px] text-base-content/40"></i>
+                  <span class="flex-1 truncate" x-text="f"></span>
+                  <button class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 min-h-0 h-5 px-1"
+                    @click.stop="deleteUpload(f)">
+                    <i class="fas fa-trash text-[10px] text-error"></i>
+                  </button>
+                </div>
+              </template>
+            </div>
+          </details>
+        </div>
+
+        <!-- File Tree -->
+        <div class="flex-1 overflow-hidden flex flex-col" x-show="fileStructure" x-cloak>
+          <div class="p-2 space-y-2 border-b border-base-300">
+            <div class="relative">
+              <i class="fas fa-search text-[10px] absolute left-2.5 top-1/2 -translate-y-1/2 text-base-content/30"></i>
+              <input id="file-search" type="text" class="input input-bordered input-xs w-full pl-7"
+                x-model="fileSearchQuery" placeholder="Search files (Ctrl+K)">
+            </div>
+            <div class="flex gap-1">
+              <button class="btn btn-ghost btn-xs flex-1" @click="selectAllFiles()">All</button>
+              <button class="btn btn-ghost btn-xs flex-1" @click="deselectAllFiles()">None</button>
+              <button class="btn btn-ghost btn-xs flex-1 gap-1" @click="selectImportantFiles()">
+                <i class="fas fa-star text-warning text-[8px]"></i>Key
+              </button>
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-base-content/40 px-1">
+              <span x-text="getFileCount() + ' files total'"></span>
+              <span x-text="selectedFiles.length + ' selected'"></span>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto scrollbar-thin p-2" x-html="renderTree(fileStructure)"></div>
+
+          <div class="p-2 border-t border-base-300 space-y-1.5">
+            <div class="flex gap-1">
+              <input type="text" class="input input-bordered input-xs flex-1" x-model="groupName" placeholder="Save selection as...">
+              <button class="btn btn-primary btn-xs" @click="saveFileGroup()" :disabled="!groupName || selectedFiles.length === 0">
+                <i class="fas fa-save text-[10px]"></i>
+              </button>
+            </div>
+            <template x-for="g in fileGroups" :key="g.name">
+              <div class="flex items-center gap-1 text-xs">
+                <button class="btn btn-ghost btn-xs flex-1 justify-start gap-1 min-h-0 h-6" @click="loadFileGroup(g)">
+                  <i class="fas fa-layer-group text-[10px] text-primary"></i>
+                  <span x-text="g.name" class="truncate"></span>
+                  <span class="badge badge-xs" x-text="g.files.length"></span>
+                </button>
+                <button class="btn btn-ghost btn-xs min-h-0 h-5 px-1" @click="deleteFileGroup(g.name)">
+                  <i class="fas fa-times text-[10px]"></i>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="flex-1 flex flex-col items-center justify-center text-base-content/20 p-8 gap-3" x-show="!fileStructure">
+          <i class="fas fa-folder-open text-5xl"></i>
+          <p class="text-sm text-center">Load a project to start</p>
+          <p class="text-xs text-center opacity-60">Clone from GitHub, upload ZIP, or paste URL</p>
+        </div>
+      </aside>
     </div>
+  </div>
 
-    <script>
-        function zip2Prompt() {
-            return {
-                fileStructure: null,
-                selectedFiles: [],
-                mergedContent: '',
-                mainPrompt: '',
-                darkMode: true,
-                currentLang: 'en',
-                urlInput: '',
-                githubUrl: '',
-                branchInput: '',
-                activeTab: 'file',
-                includeFileStructure: false,
-                uploadedFiles: [],
-                currentFileName: '',
-                excludeMediaFiles: true,
-                summarizeCode: false,
-                importantFiles: [],
-                
-                // New properties for the new features
-                promptTemplates: [],
-                selectedTemplate: '',
-                fileGroups: [],
-                newGroupName: '',
-                
-                // File preview modal properties
-                showPreviewModal: false,
-                previewContent: '',
-                previewFileName: '',
-                previewFilePath: '',
-                
-                translations: {
-                    en: {
-                        title: 'ZIP 2 Prompt',
-                        promptLabel: 'Main Prompt',
-                        fileTab: 'File Upload',
-                        urlTab: 'URL',
-                        githubTab: 'GitHub',
-                        dragDropText: 'Drag and drop your ZIP file here, or click to select',
-                        selectFile: 'Select File',
-                        fileUpload: 'Upload ZIP File',
-                        urlInput: 'Enter URL',
-                        urlPlaceholder: 'Enter direct link to ZIP file',
-                        githubUrlPlaceholder: 'Enter GitHub repository URL (e.g., https://github.com/username/repo.git)',
-                        branchInput: 'Enter Branch Name',
-                        branchPlaceholder: 'Enter branch name (default: main)',
-                        uploadFromUrl: 'Upload from URL',
-                        uploadFromGithub: 'Upload from GitHub',
-                        fileStructure: 'File Structure',
-                        extractButton: 'Extract Selected Files',
-                        mergedContent: 'Merged Content',
-                        downloadButton: 'Download Merged Content',
-                        copyToClipboard: 'Copy to Clipboard',
-                        copiedToClipboard: 'Copied to Clipboard',
-                        uploadError: 'Error uploading file',
-                        extractError: 'Error extracting files',
-                        includeStructure: 'Include file structure',
-                        uploadedFiles: 'Uploaded Files',
-                        selectAll: 'Select All',
-                        deselectAll: 'Deselect All',
-                        excludeMedia: 'Exclude media files (images, videos, etc.)',
-                        previewFile: 'Preview File',
-                        close: 'Close',
-                        addToSelection: 'Add to Selection',
-                        removeFromSelection: 'Remove from Selection',
-                        selectTemplate: 'Select a Prompt Template',
-                        summarizeCode: 'Summarize code (remove comments, format)',
-                        selectImportant: 'Select Important Files',
-                        saveGroup: 'Save Selection',
-                        groupNamePlaceholder: 'Enter group name',
-                        loadGroup: 'Load Saved Selection',
-                        selectGroup: 'Select a saved group',
-                        groupSaved: 'File group saved successfully',
-                        groupError: 'Error saving file group'
-                    },
-                    ar: {
-                        title: 'ضغط إلى برومبت',
-                        promptLabel: 'البرومبت الرئيسي',
-                        fileTab: 'رفع ملف',
-                        urlTab: 'رابط URL',
-                        githubTab: 'جيت هب',
-                        dragDropText: 'اسحب وأفلت ملف ZIP هنا، أو انقر للاختيار',
-                        selectFile: 'اختر ملفًا',
-                        fileUpload: 'رفع ملف ZIP',
-                        urlInput: 'أدخل الرابط',
-                        urlPlaceholder: 'أدخل رابطًا مباشرًا لملف ZIP',
-                        githubUrlPlaceholder: 'أدخل رابط مستودع GitHub (مثال: https://github.com/username/repo.git)',
-                        branchInput: 'أدخل اسم الفرع',
-                        branchPlaceholder: 'أدخل اسم الفرع (الافتراضي: main)',
-                        uploadFromUrl: 'رفع من الرابط',
-                        uploadFromGithub: 'رفع من GitHub',
-                        fileStructure: 'هيكل الملفات',
-                        extractButton: 'استخراج الملفات المحددة',
-                        mergedContent: 'المحتوى المدمج',
-                        downloadButton: 'تنزيل المحتوى المدمج',
-                        copyToClipboard: 'نسخ إلى الحافظة',
-                        copiedToClipboard: 'تم النسخ إلى الحافظة',
-                        uploadError: 'خطأ في رفع الملف',
-                        extractError: 'خطأ في استخراج الملفات',
-                        includeStructure: 'تضمين هيكل الملفات',
-                        uploadedFiles: 'الملفات المرفوعة',
-                        selectAll: 'تحديد الكل',
-                        deselectAll: 'إلغاء تحديد الكل',
-                        excludeMedia: 'استبعاد ملفات الوسائط (الصور، الفيديوهات، إلخ)',
-                        previewFile: 'معاينة الملف',
-                        close: 'إغلاق',
-                        addToSelection: 'إضافة إلى التحديد',
-                        removeFromSelection: 'إزالة من التحديد',
-                        selectTemplate: 'اختر قالب برومبت',
-                        summarizeCode: 'تلخيص الكود (إزالة التعليقات، تنسيق)',
-                        selectImportant: 'تحديد الملفات المهمة',
-                        saveGroup: 'حفظ التحديد',
-                        groupNamePlaceholder: 'أدخل اسم المجموعة',
-                        loadGroup: 'تحميل مجموعة محفوظة',
-                        selectGroup: 'اختر مجموعة محفوظة',
-                        groupSaved: 'تم حفظ مجموعة الملفات بنجاح',
-                        groupError: 'خطأ في حفظ مجموعة الملفات'
-                    }
-                },
+  <!-- FILE PREVIEW MODAL -->
+  <dialog id="preview-modal" class="modal" :class="{'modal-open': showPreview}">
+    <div class="modal-box w-11/12 max-w-4xl max-h-[85vh] flex flex-col p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <i class="fas fa-file-code text-primary text-sm"></i>
+        <h3 class="font-mono text-sm flex-1 truncate" x-text="previewPath"></h3>
+        <button class="btn btn-sm gap-1"
+          :class="isFileSelected(previewPath) ? 'btn-error' : 'btn-primary'"
+          @click="toggleFile(previewPath)">
+          <i class="fas text-xs" :class="isFileSelected(previewPath) ? 'fa-minus' : 'fa-plus'"></i>
+          <span x-text="isFileSelected(previewPath) ? 'Remove' : 'Add'"></span>
+        </button>
+        <button class="btn btn-ghost btn-sm btn-circle" @click="showPreview = false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="flex-1 overflow-auto bg-base-300 rounded-lg">
+        <pre class="p-3 m-0"><code class="text-xs !bg-transparent" x-text="previewContent"></code></pre>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button @click="showPreview = false">close</button></form>
+  </dialog>
 
-                async init() {
-                    this.darkMode = localStorage.getItem('darkMode') === 'true';
-                    this.toggleDarkMode();
-                    await this.fetchUploadedFiles();
-                    await this.fetchPromptTemplates();
-                    await this.fetchFileGroups();
-                    
-                    // Set event listeners for file tree
-                    document.addEventListener('click', (e) => {
-                        if (e.target.classList.contains('file-preview-btn')) {
-                            const filePath = e.target.getAttribute('data-path');
-                            this.previewFile(filePath);
-                        }
-                    });
-                },
+  <!-- SETTINGS MODAL -->
+  <dialog class="modal" :class="{'modal-open': showSettings}">
+    <div class="modal-box w-11/12 max-w-2xl max-h-[85vh] p-0">
+      <div class="flex items-center gap-2 p-4 border-b border-base-300">
+        <i class="fas fa-cog text-primary"></i>
+        <h3 class="font-bold text-lg flex-1">Settings</h3>
+        <button class="btn btn-ghost btn-sm btn-circle" @click="showSettings = false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
 
-                async fetchPromptTemplates() {
-                    try {
-                        const response = await fetch('/prompt-templates');
-                        if (!response.ok) {
-                            throw new Error('Failed to fetch prompt templates');
-                        }
-                        this.promptTemplates = await response.json();
-                    } catch (error) {
-                        console.error('Error fetching prompt templates:', error);
-                    }
-                },
-                
-                async fetchFileGroups() {
-                    try {
-                        const response = await fetch('/file-groups');
-                        if (!response.ok) {
-                            throw new Error('Failed to fetch file groups');
-                        }
-                        this.fileGroups = await response.json();
-                    } catch (error) {
-                        console.error('Error fetching file groups:', error);
-                    }
-                },
-                
-                applyTemplate() {
-                    if (!this.selectedTemplate) return;
-                    
-                    const template = this.promptTemplates.find(t => t.name === this.selectedTemplate);
-                    if (template) {
-                        this.mainPrompt = template.content;
-                    }
-                },
-                
-                async saveFileGroup() {
-                    if (!this.newGroupName || this.selectedFiles.length === 0 || !this.currentFileName) {
-                        return;
-                    }
-                    
-                    const formData = new FormData();
-                    formData.append('name', this.newGroupName);
-                    formData.append('files', JSON.stringify(this.selectedFiles));
-                    formData.append('filename', this.currentFileName);
-                    
-                    try {
-                        const response = await fetch('/file-groups', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('Failed to save file group');
-                        }
-                        
-                        await this.fetchFileGroups();
-                        alert(this.translations[this.currentLang].groupSaved);
-                        this.newGroupName = '';
-                    } catch (error) {
-                        console.error('Error saving file group:', error);
-                        alert(this.translations[this.currentLang].groupError + ': ' + error.message);
-                    }
-                },
-                
-                async loadFileGroup(groupName) {
-                    if (!groupName) return;
-                    
-                    const group = this.fileGroups.find(g => g.name === groupName);
-                    if (!group) return;
-                    
-                    // Check if we need to reopen the file first
-                    if (this.currentFileName !== group.filename) {
-                        await this.reopenFile(group.filename);
-                    }
-                    
-                    // Now set the selected files
-                    this.selectedFiles = [...group.files];
-                },
+      <div role="tablist" class="tabs tabs-bordered px-4 pt-2">
+        <input type="radio" name="stabs" role="tab" class="tab" aria-label="General" checked>
+        <div role="tabpanel" class="tab-content p-4 space-y-4">
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text text-sm">Max Upload Size (MB)</span></label>
+            <input type="number" class="input input-bordered input-sm w-32" x-model.number="config.maxFileSizeMB">
+          </div>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text text-sm">Default Model</span></label>
+            <select class="select select-bordered select-sm" x-model="config.defaultModel">
+              <template x-for="m in models" :key="m.id">
+                <option :value="m.id" x-text="m.name"></option>
+              </template>
+            </select>
+          </div>
+          <label class="label cursor-pointer justify-start gap-3 py-1">
+            <input type="checkbox" class="toggle toggle-primary toggle-sm" x-model="config.enableCache">
+            <span class="label-text text-sm">Enable Prompt Caching</span>
+          </label>
+          <label class="label cursor-pointer justify-start gap-3 py-1">
+            <input type="checkbox" class="toggle toggle-primary toggle-sm" x-model="config.autoSelectImportant">
+            <span class="label-text text-sm">Auto-select important files</span>
+          </label>
+          <button class="btn btn-primary btn-sm" @click="saveConfig()">
+            <i class="fas fa-save text-xs"></i> Save
+          </button>
+        </div>
 
-                toggleDarkMode() {
-                    this.darkMode = !this.darkMode;
-                    localStorage.setItem('darkMode', this.darkMode);
-                    document.documentElement.classList.toggle('dark', this.darkMode);
-                },
+        <input type="radio" name="stabs" role="tab" class="tab" aria-label="Models">
+        <div role="tabpanel" class="tab-content p-4 space-y-3">
+          <template x-for="m in models" :key="m.id">
+            <div class="flex items-center gap-2 p-2 bg-base-200 rounded-lg">
+              <input type="checkbox" class="toggle toggle-xs toggle-primary"
+                :checked="m.enabled" @change="toggleModelEnabled(m.id)">
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate" x-text="m.name"></div>
+                <div class="text-[10px] opacity-40 truncate" x-text="m.id"></div>
+              </div>
+              <span class="badge badge-ghost badge-xs whitespace-nowrap" x-text="m.provider"></span>
+              <button class="btn btn-ghost btn-xs text-error" @click="removeModel(m.id)">
+                <i class="fas fa-trash text-[10px]"></i>
+              </button>
+            </div>
+          </template>
 
-                async handleFileUpload(event) {
-                    const file = event.target.files[0];
-                    await this.uploadFile(file);
-                },
+          <div class="divider text-xs my-2">Add Model</div>
+          <input type="text" class="input input-bordered input-sm w-full"
+            x-model="newModelId" placeholder="Model ID (e.g. openai/gpt-4o)">
+          <div class="flex gap-2">
+            <input type="text" class="input input-bordered input-sm flex-1"
+              x-model="newModelName" placeholder="Display Name">
+            <input type="text" class="input input-bordered input-sm w-28"
+              x-model="newModelProvider" placeholder="Provider">
+          </div>
+          <button class="btn btn-primary btn-sm w-full gap-1" @click="addModel()" :disabled="!newModelId || !newModelName">
+            <i class="fas fa-plus text-xs"></i> Add Model
+          </button>
+        </div>
 
-                async handleFileDrop(event) {
-                    const file = event.dataTransfer.files[0];
-                    if (file && file.type === 'application/zip') {
-                        await this.uploadFile(file);
-                    }
-                },
+        <input type="radio" name="stabs" role="tab" class="tab" aria-label="API">
+        <div role="tabpanel" class="tab-content p-4 space-y-4">
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text text-sm">OpenRouter API Key</span></label>
+            <input type="password" class="input input-bordered input-sm"
+              :value="envConfig.OPENROUTER_API_KEY || ''"
+              @change="updateEnvConfig('OPENROUTER_API_KEY', $event.target.value)"
+              placeholder="sk-or-v1-...">
+            <label class="label py-0.5"><span class="label-text-alt text-[10px] opacity-50">Get key from openrouter.ai</span></label>
+          </div>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text text-sm">Max Upload Size (MB)</span></label>
+            <input type="number" class="input input-bordered input-sm w-32"
+              :value="envConfig.MAX_FILE_SIZE_MB || 50"
+              @change="updateEnvConfig('MAX_FILE_SIZE_MB', $event.target.value)">
+          </div>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text text-sm">Default Model</span></label>
+            <input type="text" class="input input-bordered input-sm"
+              :value="envConfig.DEFAULT_AI_MODEL || ''"
+              @change="updateEnvConfig('DEFAULT_AI_MODEL', $event.target.value)"
+              placeholder="openai/gpt-5.1-codex-mini">
+          </div>
+        </div>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button @click="showSettings = false">close</button></form>
+  </dialog>
 
-                async handleUrlUpload() {
-                    await this.uploadFile(null, this.urlInput);
-                },
+  <!-- NOTIFICATIONS -->
+  <div class="toast toast-end toast-bottom z-50 mb-2">
+    <template x-for="n in notifications" :key="n.id">
+      <div class="alert shadow-lg fade-in py-2 px-4 min-h-0"
+        :class="{
+          'alert-success': n.type==='success',
+          'alert-error': n.type==='error',
+          'alert-warning': n.type==='warning',
+          'alert-info': n.type==='info'
+        }">
+        <span class="text-sm" x-text="n.msg"></span>
+      </div>
+    </template>
+  </div>
 
-                async handleGithubUpload() {
-                    await this.uploadFile(null, this.githubUrl, this.branchInput);
-                },
+  <!-- LOADING OVERLAY -->
+  <div x-show="loading" x-cloak
+    class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
+    x-transition.opacity>
+    <div class="bg-base-200 rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-3">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+      <span class="text-sm text-base-content/70">Processing...</span>
+    </div>
+  </div>
 
-                async uploadFile(file = null, url = null, branch = null) {
-                    const formData = new FormData();
-                    if (file) {
-                        formData.append('zipFile', file);
-                    } else if (url) {
-                        formData.append('url', url);
-                        if (branch) {
-                            formData.append('branch', branch);
-                        }
-                    }
-
-                    try {
-                        const response = await fetch('/upload', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        if (!response.ok) {
-                            const error = await response.json();
-                            throw new Error(error.error || 'Unknown error');
-                        }
-                        const result = await response.json();
-                        this.fileStructure = result.fileStructure;
-                        this.currentFileName = result.filename;
-                        this.importantFiles = result.importantFiles || [];
-                        this.selectedFiles = [];
-                        this.fetchUploadedFiles();
-                    } catch (error) {
-                        console.error('Error uploading file:', error);
-                        alert(this.translations[this.currentLang].uploadError + ': ' + error.message);
-                    }
-                },
-
-                async fetchUploadedFiles() {
-                    try {
-                        const response = await fetch('/uploads');
-                        if (!response.ok) {
-                            throw new Error('Failed to fetch uploaded files');
-                        }
-                        this.uploadedFiles = await response.json();
-                    } catch (error) {
-                        console.error('Error fetching uploaded files:', error);
-                    }
-                },
-
-                async deleteUploadedFile(filename) {
-                    try {
-                        const response = await fetch(`/upload/${filename}`, {
-                            method: 'DELETE'
-                        });
-                        if (!response.ok) {
-                            throw new Error('Failed to delete file');
-                        }
-                        this.fetchUploadedFiles();
-                        if (this.currentFileName === filename) {
-                            this.fileStructure = null;
-                            this.currentFileName = '';
-                        }
-                    } catch (error) {
-                        console.error('Error deleting file:', error);
-                    }
-                },
-
-                async reopenFile(filename) {
-                    try {
-                        const response = await fetch(`/reopen/${filename}`);
-                        if (!response.ok) {
-                            throw new Error('Failed to reopen file');
-                        }
-                        const result = await response.json();
-                        this.fileStructure = result.fileStructure;
-                        this.currentFileName = result.filename;
-                        this.importantFiles = result.importantFiles || [];
-                        this.selectedFiles = [];
-                    } catch (error) {
-                        console.error('Error reopening file:', error);
-                    }
-                },
-                
-                async previewFile(filePath) {
-                    try {
-                        const response = await fetch(`/file-preview/${this.currentFileName}/${filePath}`);
-                        if (!response.ok) {
-                            throw new Error('Failed to preview file');
-                        }
-                        const result = await response.json();
-                        
-                        this.previewContent = result.content;
-                        this.previewFileName = filePath.split('/').pop();
-                        this.previewFilePath = filePath;
-                        this.showPreviewModal = true;
-                        
-                        // Use highlight.js to format code
-                        setTimeout(() => {
-                            document.querySelectorAll('pre code').forEach((block) => {
-                                hljs.highlightElement(block);
-                            });
-                        }, 100);
-                    } catch (error) {
-                        console.error('Error previewing file:', error);
-                    }
-                },
-                
-                toggleFileSelection(filePath) {
-                    const index = this.selectedFiles.indexOf(filePath);
-                    if (index === -1) {
-                        this.selectedFiles.push(filePath);
-                    } else {
-                        this.selectedFiles.splice(index, 1);
-                    }
-                },
-
-                toggleFolder(folderPath) {
-                    const folderObj = this.getNestedObject(this.fileStructure, folderPath.split('/'));
-                    const filesInFolder = this.getImmediateFilesInDirectory(folderObj);
-                    const allSelected = filesInFolder.every(file => this.selectedFiles.includes(file));
-                    
-                    if (allSelected) {
-                        this.selectedFiles = this.selectedFiles.filter(file => !filesInFolder.includes(file));
-                    } else {
-                        this.selectedFiles = [...new Set([...this.selectedFiles, ...filesInFolder])];
-                    }
-                },
-
-                toggleFile(filePath) {
-                    const index = this.selectedFiles.indexOf(filePath);
-                    if (index === -1) {
-                        this.selectedFiles.push(filePath);
-                    } else {
-                        this.selectedFiles.splice(index, 1);
-                    }
-                },
-
-                getNestedObject(obj, pathArray) {
-                    return pathArray.reduce((o, key, index) => {
-                        if (o && o.children && o.children[key]) {
-                            o.children[key].path = pathArray.slice(0, index + 1).join('/');
-                            return o.children[key];
-                        }
-                        return null;
-                    }, { children: obj });
-                },
-
-                getImmediateFilesInDirectory(directory) {
-                    const files = [];
-                    for (const [key, value] of Object.entries(directory.children || {})) {
-                        if (value.type === 'file') {
-                            const fullPath = directory.path ? `${directory.path}/${key}` : key;
-                            if (!this.isMediaFile(fullPath) || !this.excludeMediaFiles) {
-                                files.push(fullPath);
-                            }
-                        }
-                    }
-                    return files;
-                },
-
-                isMediaFile(filePath) {
-                    const mediaExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.mp4', '.avi', '.mov', '.wmv', '.mp3', '.wav', '.zip'];
-                    return mediaExtensions.some(ext => filePath.toLowerCase().endsWith(ext));
-                },
-
-                renderFileTree(name, item, path) {
-                    const fullPath = path ? `${path}/${name}` : name;
-                    if (item.type === 'file') {
-                        if (this.isMediaFile(fullPath) && this.excludeMediaFiles) {
-                            return '';
-                        }
-                        
-                        const isImportant = this.importantFiles.includes(fullPath);
-                        const importantStar = isImportant ? `<i class="fas fa-star text-yellow-500 mr-1"></i>` : '';
-                        
-                        return `
-                            <div class="flex items-center mb-1">
-                                <input type="checkbox" value="${fullPath}" @change="toggleFile('${fullPath}')" :checked="selectedFiles.includes('${fullPath}')" class="mr-2">
-                                <i class="fas fa-file text-blue-500 mr-2"></i>
-                                ${importantStar}
-                                <span>${name}</span>
-                                <button 
-                                    class="ml-2 text-gray-500 hover:text-blue-500 file-preview-btn" 
-                                    data-path="${fullPath}" 
-                                    title="${this.translations[this.currentLang].previewFile}"
-                                >
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                        `;
-                    } else {
-                        const filesInDir = this.getImmediateFilesInDirectory({ children: item.children, path: fullPath });
-                        if (filesInDir.length === 0) {
-                            return '';
-                        }
-                        const allSelected = filesInDir.length > 0 && filesInDir.every(file => this.selectedFiles.includes(file));
-                        let html = `
-                            <div class="mb-1">
-                                <input type="checkbox" @change="toggleFolder('${fullPath}')" :checked="${allSelected}" class="mr-2">
-                                <i class="fas fa-folder text-yellow-500 mr-2"></i>
-                                <span class="font-semibold">${name}</span>
-                            </div>
-                            <div class="pl-4">
-                        `;
-                        for (const [childName, childItem] of Object.entries(item.children)) {
-                            html += this.renderFileTree(childName, childItem, fullPath);
-                        }
-                        html += '</div>';
-                        return html;
-                    }
-                },
-
-                selectAllFiles() {
-                    this.selectedFiles = this.getAllFiles(this.fileStructure);
-                },
-
-                deselectAllFiles() {
-                    this.selectedFiles = [];
-                },
-                
-                selectImportantFiles() {
-                    this.selectedFiles = [...this.importantFiles];
-                },
-
-                getAllFiles(obj, path = '') {
-                    let files = [];
-                    for (const [key, value] of Object.entries(obj)) {
-                        const fullPath = path ? `${path}/${key}` : key;
-                        if (value.type === 'file') {
-                            if (!this.isMediaFile(fullPath) || !this.excludeMediaFiles) {
-                                files.push(fullPath);
-                            }
-                        } else if (value.type === 'directory') {
-                            files = files.concat(this.getAllFiles(value.children, fullPath));
-                        }
-                    }
-                    return files;
-                },
-
-                async handleExtract() {
-                    const formData = new FormData();
-                    formData.append('files', JSON.stringify(this.selectedFiles));
-                    formData.append('filename', this.currentFileName);
-                    formData.append('summarize', this.summarizeCode.toString());
-
-                    try {
-                        const response = await fetch('/extract', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        if (!response.ok) {
-                            const error = await response.json();
-                            throw new Error(error.error || 'Unknown error');
-                        }
-                        const result = await response.json();
-                        this.mergedContent = this.mainPrompt + '\n\n' + result.content;
-
-                        if (this.includeFileStructure) {
-                            this.mergedContent = this.getFileStructureText() + '\n\n' + this.mergedContent;
-                        }
-                    } catch (error) {
-                        console.error('Error extracting files:', error);
-                        alert(this.translations[this.currentLang].extractError + ': ' + error.message);
-                    }
-                },
-
-                getFileStructureText() {
-                    let structureText = "Project Structure:\n";
-                    const addToStructure = (obj, depth = 0) => {
-                        for (const [key, value] of Object.entries(obj)) {
-                            if (value.type === 'file' && (!this.isMediaFile(key) || !this.excludeMediaFiles)) {
-                                const isImportant = this.importantFiles.includes(key) ? " [*]" : "";
-                                structureText += "  ".repeat(depth) + key + isImportant + "\n";
-                            } else if (value.type === 'directory') {
-                                structureText += "  ".repeat(depth) + key + "/\n";
-                                addToStructure(value.children, depth + 1);
-                            }
-                        }
-                    };
-                    addToStructure(this.fileStructure);
-                    return structureText;
-                },
-
-                downloadMergedContent() {
-                    const blob = new Blob([this.mergedContent], { type: 'text/plain' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${this.currentFileName}_merged_content.txt`;
-                    a.click();
-                },
-                
-                copyToClipboard() {
-                    navigator.clipboard.writeText(this.mergedContent).then(() => {
-                        alert(this.translations[this.currentLang].copiedToClipboard);
-                    }).catch(err => {
-                        console.error('Failed to copy text: ', err);
-                    });
-                }
-            };
-        }
-    </script>
 </body>
 </html>
