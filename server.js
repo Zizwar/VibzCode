@@ -9,6 +9,12 @@ import path from 'path'
 import os from 'os'
 import beautify from 'js-beautify'
 import stripComments from 'strip-comments'
+import dotenv from 'dotenv'
+import database from './config/database.js'
+import openrouter from './utils/openrouter.js'
+
+// Load environment variables
+dotenv.config()
 
 const app = new Hono()
 
@@ -394,9 +400,207 @@ function buildFileStructure(entries) {
   return structure
 }
 
+// ============================================
+// AI CHAT ENDPOINTS
+// ============================================
+
+// Get available AI models
+app.get('/api/ai/models', (c) => {
+  try {
+    if (!openrouter.enabled) {
+      return c.json({ error: 'AI features are not enabled. Please configure OPENROUTER_API_KEY.' }, 503);
+    }
+    const models = openrouter.getAvailableModels();
+    return c.json(models);
+  } catch (error) {
+    console.error('Error getting AI models:', error);
+    return c.json({ error: 'Failed to get AI models' }, 500);
+  }
+});
+
+// Send chat message to AI
+app.post('/api/ai/chat', async (c) => {
+  try {
+    if (!openrouter.enabled) {
+      return c.json({ error: 'AI features are not enabled. Please configure OPENROUTER_API_KEY.' }, 503);
+    }
+
+    const formData = await c.req.formData();
+    const message = formData.get('message');
+    const projectId = formData.get('projectId');
+    const model = formData.get('model');
+    const contextFiles = formData.get('contextFiles');
+
+    if (!message) {
+      return c.json({ error: 'Message is required' }, 400);
+    }
+
+    // Build context from selected files
+    let contextContent = '';
+    if (contextFiles) {
+      const files = JSON.parse(contextFiles);
+      contextContent = `\n\nProject Context:\n${files}`;
+    }
+
+    // Get chat history
+    let chatHistory = [];
+    if (projectId) {
+      chatHistory = await database.getChatHistory(projectId);
+    }
+
+    // Build messages array
+    const messages = [
+      ...chatHistory.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      {
+        role: 'user',
+        content: message + contextContent
+      }
+    ];
+
+    // Get AI response
+    const response = await openrouter.chat(messages, model);
+
+    // Save to chat history
+    if (projectId) {
+      await database.saveChatMessage(projectId, {
+        role: 'user',
+        content: message
+      });
+      await database.saveChatMessage(projectId, {
+        role: 'assistant',
+        content: response.content,
+        model: response.model
+      });
+    }
+
+    return c.json({
+      response: response.content,
+      model: response.model,
+      usage: response.usage
+    });
+  } catch (error) {
+    console.error('Error in AI chat:', error);
+    return c.json({ error: 'AI chat failed: ' + error.message }, 500);
+  }
+});
+
+// Get chat history
+app.get('/api/ai/chat/:projectId', async (c) => {
+  try {
+    const projectId = c.req.param('projectId');
+    const history = await database.getChatHistory(projectId);
+    return c.json(history);
+  } catch (error) {
+    console.error('Error getting chat history:', error);
+    return c.json({ error: 'Failed to get chat history' }, 500);
+  }
+});
+
+// ============================================
+// AI ANALYSIS ENDPOINTS
+// ============================================
+
+// Analyze project with AI
+app.post('/api/ai/analyze', async (c) => {
+  try {
+    if (!openrouter.enabled) {
+      return c.json({ error: 'AI features are not enabled. Please configure OPENROUTER_API_KEY.' }, 503);
+    }
+
+    const formData = await c.req.formData();
+    const projectContent = formData.get('content');
+    const analysisType = formData.get('type') || 'general';
+
+    if (!projectContent) {
+      return c.json({ error: 'Project content is required' }, 400);
+    }
+
+    const analysis = await openrouter.analyzeProject(projectContent, analysisType);
+
+    return c.json({
+      analysis: analysis.content,
+      model: analysis.model,
+      usage: analysis.usage
+    });
+  } catch (error) {
+    console.error('Error analyzing project:', error);
+    return c.json({ error: 'Analysis failed: ' + error.message }, 500);
+  }
+});
+
+// Run AI agent
+app.post('/api/ai/agent/:type', async (c) => {
+  try {
+    if (!openrouter.enabled) {
+      return c.json({ error: 'AI features are not enabled. Please configure OPENROUTER_API_KEY.' }, 503);
+    }
+
+    const agentType = c.req.param('type');
+    const formData = await c.req.formData();
+    const codeContent = formData.get('content');
+
+    if (!codeContent) {
+      return c.json({ error: 'Code content is required' }, 400);
+    }
+
+    const result = await openrouter.runAgent(agentType, codeContent);
+
+    return c.json({
+      result: result.content,
+      agent: agentType,
+      model: result.model
+    });
+  } catch (error) {
+    console.error('Error running AI agent:', error);
+    return c.json({ error: 'Agent failed: ' + error.message }, 500);
+  }
+});
+
+// Get available agents
+app.get('/api/ai/agents', (c) => {
+  const agents = [
+    { id: 'security', name: 'Security Analyzer', icon: '🔒' },
+    { id: 'performance', name: 'Performance Optimizer', icon: '⚡' },
+    { id: 'documentation', name: 'Documentation Generator', icon: '📚' },
+    { id: 'refactoring', name: 'Refactoring Expert', icon: '🔄' },
+    { id: 'testing', name: 'Testing Agent', icon: '🧪' }
+  ];
+  return c.json(agents);
+});
+
+// ============================================
+// PROJECT MANAGEMENT ENDPOINTS
+// ============================================
+
+// Get all projects
+app.get('/api/projects', async (c) => {
+  try {
+    const projects = await database.getProjects('default');
+    return c.json(projects);
+  } catch (error) {
+    console.error('Error getting projects:', error);
+    return c.json({ error: 'Failed to get projects' }, 500);
+  }
+});
+
+// Initialize database connection
+await database.connect();
+
 serve({
   fetch: app.fetch,
   port: PORT
 })
 
-console.log('Server is running on http://localhost:3001')
+console.log('🚀 Server is running on http://localhost:' + PORT)
+console.log('📦 Storage Mode:', process.env.STORAGE_MODE || 'local')
+console.log('🤖 AI Features:', openrouter.enabled ? 'Enabled' : 'Disabled (Set OPENROUTER_API_KEY to enable)')
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n👋 Shutting down gracefully...');
+  await database.close();
+  process.exit(0);
+});

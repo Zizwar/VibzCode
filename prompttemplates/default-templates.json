@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Code Analysis",
+    "content": "Please analyze the following code and provide insights on its architecture, design patterns, and potential improvements:\n\n"
+  },
+  {
+    "name": "Bug Finding",
+    "content": "Please review the following code and identify any bugs, security vulnerabilities, or performance issues:\n\n"
+  },
+  {
+    "name": "Documentation Generator",
+    "content": "Please generate comprehensive documentation for the following code including function descriptions, parameters, and usage examples:\n\n"
+  },
+  {
+    "name": "Code Refactoring",
+    "content": "Please suggest refactoring for the following code to improve its readability, maintainability, and performance:\n\n"
+  }
+]
