@@ -1,542 +1,321 @@
-# 🚀 Zip2Prompt - Interactive AI Code Analysis Platform
+# VibZcode
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-ISC-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
 
-**Transform your codebase into interactive AI conversations**
+**AI-powered code exploration and analysis platform**
 
-Upload your projects and chat with multiple AI models for instant code analysis, documentation, and improvements.
+Upload projects from GitHub, ZIP, or URL — browse files, extract content, and chat with AI models about your code.
 
-[Features](#-features) • [Quick Start](#-quick-start) • [API Documentation](#-api-documentation) • [Configuration](#-configuration)
+[Features](#features) &bull; [Quick Start](#quick-start) &bull; [API](#api-reference) &bull; [Configuration](#configuration) &bull; [Contributing](#contributing)
 
 </div>
 
 ---
 
-## 📋 Overview
+## Features
 
-**Zip2Prompt** is an interactive platform that revolutionizes how developers analyze and understand codebases. Upload your project as a ZIP file, GitHub repository, or URL, and instantly start chatting with advanced AI models to:
+### Project Loading
+- Clone from **GitHub** repositories with branch selection
+- Fetch from any **URL** (ZIP files)
+- **Drag & drop** ZIP file upload
+- **URL hash loading** — open repos via `vibzcode.com/#https://github.com/user/repo`
+- File size limit enforcement (configurable)
 
-- 🤖 **Chat with AI** about your code using Claude, GPT-4, Gemini, and more
-- 🔍 **Analyze** security vulnerabilities, performance bottlenecks, and code quality
-- 📚 **Generate** documentation automatically
-- 🔄 **Refactor** code with AI-powered suggestions
-- 🧪 **Create** test cases and improve coverage
-- 💾 **Save** chat history and file selections for future reference
+### File Explorer
+- Interactive **file tree** with folder expand/collapse
+- **Smart detection** of important files (package.json, Dockerfile, main entry points, etc.)
+- File **search/filter** with keyboard shortcut (`Ctrl+K`)
+- **Syntax-highlighted preview** modal for any file
+- **File groups** — save and reload file selections
+- Media file filtering
 
----
+### AI Chat
+- Multi-model support via [OpenRouter](https://openrouter.ai/) (GPT, Grok, and more)
+- **Prompt caching** (`cache_control: ephemeral`) to reduce token costs on repeated context
+- **Quick actions**: Explain, Find Bugs, Improve, Generate Tests, Documentation, Refactor
+- Markdown rendering with syntax highlighting and code copy buttons
+- Chat history persistence per project
+- **Specialized agents**: Security analysis, performance optimization, documentation generation, refactoring, testing
 
-## ✨ Features
+### Prompt & Output
+- Prompt **templates** for common tasks
+- Automatic **file structure** inclusion in output
+- Code **summarization** option (strips comments, formats code)
+- **Token estimation** display
+- Copy to clipboard or download as file
 
-### 🎯 Core Features
+### UI/UX
+- **DaisyUI** component library on Tailwind CSS
+- Dark and light theme toggle
+- Fully **responsive** — works on mobile and desktop
+- **Session persistence** via localStorage
+- Keyboard shortcuts (`Ctrl+Enter` to extract/send, `Ctrl+K` to search)
+- Toast notifications
 
-#### **Multiple Input Methods**
-- 📦 Upload ZIP files directly
-- 🔗 Fetch from any URL
-- 🐙 Clone from GitHub repositories (with branch selection)
-- 📂 Browse and select specific files from your project
-
-#### **AI-Powered Analysis**
-- 🤖 **Multi-Model Support**: Claude 3.5 Sonnet, GPT-4 Turbo, Gemini Pro, Mistral Large
-- 💬 **Interactive Chat**: Real-time conversations with AI about your code
-- 📊 **Smart Analysis**: Security scans, performance optimization, code quality checks
-- 🎯 **Specialized Agents**:
-  - 🔒 **Security Analyzer**: Vulnerability detection and OWASP compliance
-  - ⚡ **Performance Optimizer**: Bottleneck identification and optimization
-  - 📚 **Documentation Generator**: Automatic documentation creation
-  - 🔄 **Refactoring Expert**: Clean code suggestions and best practices
-  - 🧪 **Testing Agent**: Test case generation and coverage analysis
-
-#### **Smart Project Management**
-- 📁 **File Tree Navigation**: Visual hierarchy of your project structure
-- ⭐ **Important Files Detection**: Automatically identifies key project files
-- 🎯 **File Groups**: Save and load file selections for different contexts
-- 🔍 **Code Preview**: Syntax-highlighted preview with copy functionality
-- 🎨 **Media Filtering**: Optionally exclude images and videos
-
-#### **Developer Experience**
-- 🌙 **Dark/Light Mode**: Beautiful themes for any preference
-- 🌐 **Multi-language**: English and Arabic support
-- 💾 **Chat History**: All conversations saved and retrievable
-- 📋 **Templates**: Pre-built prompts for common tasks
-- 📥 **Export**: Download merged content or chat history
+### Configuration from UI
+- **Models management** — add, remove, enable/disable AI models from settings
+- **App config** — default model, cache toggle, auto-select important files
+- **Environment variables** — update API keys and limits without restarting
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- **Node.js** 18.0.0 or higher
-- **npm** or **yarn**
-- (Optional) **MongoDB Atlas** account for cloud storage
-- (Optional) **OpenRouter API Key** for AI features
+- **Node.js** 18+
+- **npm**
+- (Optional) MongoDB for cloud storage
+- (Optional) [OpenRouter API key](https://openrouter.ai/) for AI features
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/zip2prompt.git
+git clone https://github.com/Zizwar/zip2prompt.git
 cd zip2prompt
-
-# Install dependencies
 npm install
-
-# Copy environment configuration
-cp .env.example .env
-
-# Edit .env and add your API keys (optional for basic usage)
-nano .env
 ```
 
-### Configuration
+### Environment Setup
 
-Edit `.env` file:
+Create a `.env` file:
 
 ```env
-# Server
 PORT=8080
-NODE_ENV=development
-
-# Storage (local or mongodb)
 STORAGE_MODE=local
+MAX_FILE_SIZE_MB=50
 
-# MongoDB (optional - for cloud storage)
-MONGODB_URI=your_mongodb_connection_string
+# Optional — enables AI chat
+OPENROUTER_API_KEY=sk-or-v1-...
+DEFAULT_AI_MODEL=openai/gpt-5.1-codex-mini
 
-# OpenRouter (optional - for AI features)
-OPENROUTER_API_KEY=your_openrouter_api_key
-
-# Security
-JWT_SECRET=your-secret-key-change-this
+# Optional — MongoDB instead of local file storage
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/vibzcode
 ```
 
-### Running the Application
+### Run
 
 ```bash
-# Development mode (with auto-reload)
+# Development
 npm run dev
 
-# Production mode
+# Production
 npm start
 ```
 
-Visit **http://localhost:8080** in your browser.
+Open **http://localhost:8080** in your browser.
 
 ---
 
-## 📖 Usage Guide
+## Usage
 
-### Basic Workflow
+1. **Load a project** — paste a GitHub URL and click Clone, drop a ZIP, or enter a direct URL
+2. **Browse & select files** — use the file tree in the sidebar; important files are auto-selected
+3. **Extract** — click Extract to merge selected files into a single output with file structure
+4. **Chat with AI** — switch to the Chat tab, ask questions about the code with full file context
+5. **Quick actions** — use Explain, Bugs, Improve, Tests, Docs, or Refactor buttons for one-click analysis
 
-1. **Upload Your Project**
-   - Drag & drop a ZIP file
-   - Enter a URL to a ZIP file
-   - Clone from GitHub (with branch selection)
+### URL-based Loading
 
-2. **Select Files**
-   - Browse the file tree
-   - Select specific files or entire folders
-   - Use "Select Important Files" for quick selection
-   - Exclude media files if needed
-
-3. **Choose Your Action**
-   - **Extract**: Copy selected file contents to clipboard
-   - **Chat with AI**: Ask questions about your code (requires API key)
-   - **Run Analysis**: Get automated security/performance reports
-   - **Use Agents**: Specialized AI for specific tasks
-
-### AI Chat Features
-
-#### Starting a Conversation
+Open a project directly via URL:
 
 ```
-1. Select files from your project
-2. Click "Chat with AI" button
-3. Choose your AI model (Claude, GPT-4, etc.)
-4. Type your question or use a template
-5. Get instant, context-aware responses
+https://vibzcode.com/#https://github.com/user/repo
+https://vibzcode.com/get/https://github.com/user/repo
 ```
-
-#### Example Prompts
-
-- "Explain the architecture of this application"
-- "Find security vulnerabilities in the authentication code"
-- "Suggest performance improvements for the database queries"
-- "Generate documentation for the API endpoints"
-- "Write unit tests for the UserService class"
-
-### Specialized AI Agents
-
-#### 🔒 Security Analyzer
-Scans for:
-- SQL injection vulnerabilities
-- XSS attacks
-- Authentication issues
-- Hard-coded secrets
-- OWASP Top 10 compliance
-
-#### ⚡ Performance Optimizer
-Identifies:
-- Inefficient algorithms
-- Database query optimization
-- Memory leaks
-- Resource bottlenecks
-
-#### 📚 Documentation Generator
-Creates:
-- Function/method documentation
-- API documentation
-- README files
-- Code comments
 
 ---
 
-## 🏗️ Architecture
-
-### Project Structure
+## Project Structure
 
 ```
-zip2prompt/
-├── server.js              # Main server file
+vibzcode/
+├── server.js                 # Hono server with all API routes
 ├── config/
-│   └── database.js        # Database abstraction (local/MongoDB)
+│   ├── database.js           # Storage abstraction (local/MongoDB)
+│   ├── models.json           # AI model registry
+│   └── app-config.json       # App settings
 ├── utils/
-│   └── openrouter.js      # OpenRouter AI integration
+│   └── openrouter.js         # OpenRouter API client
 ├── public/
-│   └── index.html         # Frontend application
-├── uploads/               # Uploaded ZIP files
-├── filegroups/            # Saved file selections
-├── prompttemplates/       # Prompt templates
-└── data/                  # Local storage (when not using MongoDB)
-    ├── projects/
-    ├── chats/
-    └── users/
+│   ├── index.html            # SPA entry point (DaisyUI + Alpine.js)
+│   └── js/
+│       ├── app.js            # Alpine.js component registration & init
+│       ├── upload.js          # Upload/clone module
+│       ├── filetree.js        # File tree rendering & selection
+│       ├── chat.js            # AI chat module
+│       ├── config.js          # Settings/models management
+│       └── utils.js           # Shared utilities
+├── uploads/                  # Stored ZIP files
+├── filegroups/               # Saved file selections
+├── prompttemplates/          # Prompt templates
+└── data/                     # Local storage (projects, chats)
 ```
 
-### Technology Stack
+### Tech Stack
 
-**Backend:**
-- Node.js + Hono (Fast web framework)
-- MongoDB / Local File Storage
-- OpenRouter (Multi-model AI API)
-- AdmZip (ZIP file processing)
-
-**Frontend:**
-- Alpine.js (Reactive UI)
-- Tailwind CSS (Styling)
-- Highlight.js (Syntax highlighting)
-- Font Awesome (Icons)
+| Layer | Technology |
+|-------|-----------|
+| Server | Node.js, Hono |
+| Frontend | Alpine.js, DaisyUI (Tailwind CSS) |
+| AI | OpenRouter (multi-model) |
+| ZIP handling | AdmZip |
+| Syntax highlighting | Highlight.js |
+| Markdown | Marked.js |
+| Icons | Font Awesome 6 |
+| Storage | Local filesystem or MongoDB |
 
 ---
 
-## 🔌 API Documentation
+## API Reference
 
 ### File Operations
 
-#### Upload Project
-```http
-POST /upload
-Content-Type: multipart/form-data
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/upload` | Upload ZIP, clone from GitHub, or fetch from URL |
+| `GET` | `/uploads` | List uploaded projects |
+| `GET` | `/reopen/:filename` | Reopen a previously uploaded project |
+| `GET` | `/file-preview/:filename/:filepath` | Preview a single file from a project |
+| `POST` | `/extract` | Extract and merge selected files |
+| `DELETE` | `/upload/:filename` | Delete an uploaded project |
 
-Parameters:
-- zipFile: File (ZIP file)
-- url: String (URL to ZIP file)
-- branch: String (GitHub branch name)
+### AI
 
-Response:
-{
-  "fileStructure": {...},
-  "filename": "project.zip",
-  "importantFiles": [...]
-}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/ai/chat` | Send a message with file context (JSON body) |
+| `GET` | `/api/ai/chat/:projectId` | Get chat history for a project |
+| `GET` | `/api/ai/models` | List available AI models |
+| `POST` | `/api/ai/analyze` | Run project analysis |
+| `POST` | `/api/ai/agent/:type` | Run a specialized agent |
+| `GET` | `/api/ai/agents` | List available agents |
 
-#### Extract Files
-```http
-POST /extract
-Content-Type: multipart/form-data
+### Configuration
 
-Parameters:
-- filename: String
-- files: JSON Array
-- summarize: Boolean
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/config` | Get app configuration |
+| `PUT` | `/api/config` | Update app configuration |
+| `GET` | `/api/config/models` | Get model registry |
+| `PUT` | `/api/config/models` | Update model registry |
+| `GET` | `/api/config/env` | Get environment config (API key masked) |
+| `PUT` | `/api/config/env` | Update environment variables |
 
-Response:
-{
-  "content": "// Combined file contents..."
-}
-```
+### Templates & Groups
 
-### AI Operations
-
-#### Chat with AI
-```http
-POST /api/ai/chat
-Content-Type: multipart/form-data
-
-Parameters:
-- message: String (Your question)
-- projectId: String (Optional)
-- model: String (AI model ID)
-- contextFiles: JSON (Selected files content)
-
-Response:
-{
-  "response": "AI response...",
-  "model": "anthropic/claude-3.5-sonnet",
-  "usage": {...}
-}
-```
-
-#### Get Available Models
-```http
-GET /api/ai/models
-
-Response:
-[
-  {
-    "id": "anthropic/claude-3.5-sonnet",
-    "name": "Claude 3.5 Sonnet",
-    "provider": "Anthropic",
-    "contextWindow": 200000,
-    "recommended": true
-  },
-  ...
-]
-```
-
-#### Analyze Project
-```http
-POST /api/ai/analyze
-Content-Type: multipart/form-data
-
-Parameters:
-- content: String (Project code)
-- type: String (general|security|performance)
-
-Response:
-{
-  "analysis": "Detailed analysis...",
-  "model": "anthropic/claude-3.5-sonnet",
-  "usage": {...}
-}
-```
-
-#### Run AI Agent
-```http
-POST /api/ai/agent/:type
-Content-Type: multipart/form-data
-
-Parameters:
-- content: String (Code to analyze)
-
-Types: security, performance, documentation, refactoring, testing
-
-Response:
-{
-  "result": "Agent analysis...",
-  "agent": "security",
-  "model": "anthropic/claude-3.5-sonnet"
-}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/prompt-templates` | List prompt templates |
+| `GET` | `/file-groups` | List saved file groups |
+| `POST` | `/file-groups` | Save a file group |
+| `DELETE` | `/file-groups/:name` | Delete a file group |
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-### Storage Options
+### Storage
 
-#### Local File Storage (Default)
+**Local** (default) — no dependencies, data stored in `./data/`:
+
 ```env
 STORAGE_MODE=local
 ```
-- No external dependencies
-- All data stored in `./data/` directory
-- Perfect for development and single-user setups
 
-#### MongoDB Atlas
+**MongoDB** — cloud storage, scalable:
+
 ```env
 STORAGE_MODE=mongodb
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/zip2prompt
-```
-- Cloud-based storage
-- Scalable for multiple users
-- Automatic backups and high availability
-
-### AI Configuration
-
-To enable AI features, get an API key from [OpenRouter](https://openrouter.ai/):
-
-```env
-OPENROUTER_API_KEY=sk-or-v1-...
-DEFAULT_AI_MODEL=anthropic/claude-3.5-sonnet
+MONGODB_URI=mongodb+srv://...
 ```
 
-**Supported Models:**
-- `anthropic/claude-3.5-sonnet` (Recommended)
-- `anthropic/claude-3-opus`
-- `openai/gpt-4-turbo`
-- `openai/gpt-4`
-- `google/gemini-pro-1.5`
-- `mistralai/mistral-large`
+### AI Models
 
----
+Models are managed from the UI (Settings > Models tab) and stored in `config/models.json`. Default models include GPT-4.1 Mini, GPT-5 Mini, GPT-5.1 Codex Mini, Grok 4.1 Fast, Grok 3 Mini, Grok Code Fast, and Arcee Coder Large.
 
-## 🎨 Customization
-
-### Adding Custom Prompt Templates
-
-Edit `prompttemplates/default-templates.json`:
+To add models programmatically:
 
 ```json
-[
-  {
-    "name": "Code Review",
-    "content": "Please review this code and suggest improvements:\n\n"
-  },
-  {
-    "name": "Bug Hunt",
-    "content": "Find and explain any bugs in this code:\n\n"
-  }
-]
+{
+  "models": [
+    { "id": "openai/gpt-4.1-mini", "name": "GPT-4.1 Mini", "provider": "OpenAI", "enabled": true }
+  ]
+}
 ```
 
-### File Group Management
+### Prompt Caching
 
-Save frequently used file selections:
-1. Select your files
-2. Enter a group name
-3. Click "Save Selection"
-4. Load anytime from the dropdown
+When enabled (default), context files are sent with `cache_control: { type: "ephemeral" }`. This reduces token costs when the same file context is used across multiple messages in a conversation.
 
----
+Toggle from the UI or in `config/app-config.json`:
 
-## 🔒 Security
-
-### Best Practices
-
-- **Never commit `.env` file** to version control
-- **Use strong JWT secrets** in production
-- **Enable HTTPS** for production deployments
-- **Rate limit API endpoints** to prevent abuse
-- **Validate and sanitize** all user inputs
-- **Encrypt sensitive data** in MongoDB
-
-### Environment Variables
-
-All sensitive configuration should be in `.env`:
-- API keys
-- Database credentials
-- JWT secrets
-- Session secrets
+```json
+{ "enableCache": true }
+```
 
 ---
 
-## 🐛 Troubleshooting
+## Docker
 
-### Common Issues
+```bash
+docker build -t vibzcode .
+docker run -p 8080:8080 -e OPENROUTER_API_KEY=sk-or-... vibzcode
+```
+
+Or with docker-compose:
+
+```bash
+docker-compose up
+```
+
+---
+
+## Troubleshooting
 
 **AI features not working?**
-```
-✓ Check OPENROUTER_API_KEY is set in .env
-✓ Verify API key is valid at openrouter.ai
-✓ Check console for error messages
-```
+- Verify `OPENROUTER_API_KEY` is set (check Settings > API in the UI)
+- Ensure the key is valid at [openrouter.ai](https://openrouter.ai/)
+- Check server logs for error details
 
 **MongoDB connection failed?**
-```
-✓ Verify MONGODB_URI is correct
-✓ Check network connectivity
-✓ Whitelist your IP in MongoDB Atlas
-✓ Falls back to local storage automatically
-```
+- Verify `MONGODB_URI` is correct
+- Whitelist your IP in MongoDB Atlas
+- The app falls back to local storage automatically
 
-**Files not uploading?**
-```
-✓ Check file size limits
-✓ Ensure uploads/ directory exists and is writable
-✓ Verify ZIP file is not corrupted
-```
+**Large files rejected?**
+- Increase `MAX_FILE_SIZE_MB` in `.env` or Settings > API
+- Default limit is 50MB
 
 ---
 
-## 🗺️ Roadmap
+## Contributing
 
-### Version 1.1 (Coming Soon)
-- [ ] Real-time collaboration
-- [ ] VS Code extension
-- [ ] Browser extension
-- [ ] Advanced code navigation
-- [ ] Project comparison tools
-
-### Version 1.2
-- [ ] Team workspaces
-- [ ] User authentication
-- [ ] GitHub OAuth integration
-- [ ] CI/CD integration
-- [ ] Custom AI agent training
-
-### Version 2.0
-- [ ] Multi-modal AI (diagrams, flowcharts)
-- [ ] Voice input/output
-- [ ] Mobile app
-- [ ] On-premise deployment option
-- [ ] Enterprise features
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome.
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes
+4. Push to the branch
 5. Open a Pull Request
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the ISC License.
-
----
-
-## 👨‍💻 Author
-
-**Brahim BIDI**
-
-- GitHub: [@zizwar](https://github.com/zizwar)
+ISC
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- [OpenRouter](https://openrouter.ai/) - Multi-model AI API
-- [Hono](https://hono.dev/) - Fast web framework
-- [Alpine.js](https://alpinejs.dev/) - Lightweight JavaScript framework
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- All the amazing open-source projects that made this possible!
-
----
-
-## 📞 Support
-
-- 📧 Email: support@zip2prompt.com
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/zip2prompt/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/zip2prompt/discussions)
-
----
-
-<div align="center">
-
-**Made with ❤️ by developers, for developers**
-
-[⭐ Star us on GitHub](https://github.com/yourusername/zip2prompt) | [🐦 Follow on Twitter](https://twitter.com/yourusername)
-
-</div>
+- [OpenRouter](https://openrouter.ai/) — multi-model AI API
+- [Hono](https://hono.dev/) — fast web framework
+- [Alpine.js](https://alpinejs.dev/) — lightweight reactive framework
+- [DaisyUI](https://daisyui.com/) — Tailwind CSS component library
+- [Highlight.js](https://highlightjs.org/) — syntax highlighting
+- [Marked.js](https://marked.js.org/) — markdown parser
