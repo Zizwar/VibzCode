@@ -284,6 +284,54 @@
 
           <!-- GitHub -->
           <div x-show="uploadTab === 'github'" class="space-y-2">
+            <!-- Auth Status -->
+            <div x-show="!githubAuth.authenticated" class="alert alert-sm bg-base-300 border-0 p-2">
+              <i class="fas fa-info-circle text-xs"></i>
+              <span class="text-xs">Sign in to access private repos</span>
+            </div>
+
+            <div x-show="githubAuth.authenticated" class="flex items-center gap-2 p-2 bg-success/10 rounded border border-success/20">
+              <img x-show="githubAuth.user?.avatar_url" :src="githubAuth.user?.avatar_url" class="w-5 h-5 rounded-full" />
+              <div class="flex-1 min-w-0">
+                <div class="text-xs font-medium truncate" x-text="githubAuth.user?.login"></div>
+              </div>
+              <button @click="logout()" class="btn btn-ghost btn-xs">
+                <i class="fas fa-sign-out-alt text-xs"></i>
+              </button>
+            </div>
+
+            <!-- Connect Button -->
+            <button x-show="!githubAuth.authenticated" @click="loginWithGitHub()" class="btn btn-sm btn-outline w-full gap-2">
+              <i class="fab fa-github"></i> Connect GitHub
+            </button>
+
+            <!-- Browse Repos -->
+            <div x-show="githubAuth.authenticated" class="space-y-2">
+              <button @click="fetchUserRepos()" :disabled="loadingRepos" class="btn btn-sm btn-outline w-full gap-2">
+                <span class="loading loading-spinner loading-xs" x-show="loadingRepos" x-cloak></span>
+                <i class="fas fa-folder-tree text-xs" x-show="!loadingRepos"></i>
+                <span x-text="userRepos.length > 0 ? 'Refresh Repos' : 'Browse Repos'"></span>
+              </button>
+
+              <!-- Repos List -->
+              <div x-show="userRepos.length > 0" class="max-h-48 overflow-y-auto border border-base-300 rounded-lg bg-base-100">
+                <template x-for="repo in userRepos" :key="repo.id">
+                  <div @click="selectRepo(repo)" class="p-2 hover:bg-base-200 cursor-pointer border-b border-base-300 last:border-0">
+                    <div class="flex items-start gap-2">
+                      <i class="fas fa-lock text-xs text-warning mt-0.5" x-show="repo.private"></i>
+                      <i class="fas fa-book text-xs text-base-content/40 mt-0.5" x-show="!repo.private"></i>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-xs font-medium truncate" x-text="repo.full_name"></div>
+                        <div class="text-[10px] text-base-content/50 truncate" x-text="repo.description || 'No description'"></div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Manual URL -->
+            <div class="divider text-xs my-1">Or enter URL</div>
             <input type="text" class="input input-bordered input-sm w-full"
               x-model="githubUrl" placeholder="https://github.com/user/repo"
               @keydown.enter="uploadFromGitHub()">

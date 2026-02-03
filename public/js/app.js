@@ -88,6 +88,18 @@ document.addEventListener('alpine:init', () => {
       this.fetchTemplates();
       this.fetchFileGroups();
       this.restoreSession();
+      this.checkAuthStatus();
+
+      // Check for auth callback
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('auth') === 'success') {
+        VZ.utils.notify('GitHub connected successfully!', 'success');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (urlParams.get('auth') === 'error') {
+        VZ.utils.notify('GitHub authentication failed', 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
 
       // URL hash auto-load
       this.$nextTick(() => this.checkUrlHash());

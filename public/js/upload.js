@@ -6,6 +6,12 @@ VZ.upload = {
   githubUrl: '',
   githubBranch: 'main',
   isDragging: false,
+  githubAuth: {
+    authenticated: false,
+    user: null
+  },
+  userRepos: [],
+  loadingRepos: false,
 
   async handleFileDrop(e) {
     e.preventDefault();
@@ -154,5 +160,73 @@ VZ.upload = {
     } finally {
       this.loading = false;
     }
+  },
+
+  // ============================================
+  // GITHUB AUTHENTICATION
+  // ============================================
+
+  async checkAuthStatus() {
+    try {
+      const res = await fetch('/api/auth/status');
+      const data = await res.json();
+      this.githubAuth = {
+        authenticated: data.authenticated || false,
+        user: data.user || null
+      };
+    } catch (err) {
+      console.error('Failed to check auth status:', err);
+      this.githubAuth = { authenticated: false, user: null };
+    }
+  },
+
+  loginWithGitHub() {
+    window.location.href = '/auth/github';
+  },
+
+  async logout() {
+    try {
+      await fetch('/auth/logout');
+      this.githubAuth = { authenticated: false, user: null };
+      this.userRepos = [];
+      VZ.utils.notify('Logged out', 'success');
+    } catch (err) {
+      VZ.utils.notify('Logout failed', 'error');
+    }
+  },
+
+  async fetchUserRepos() {
+    if (!this.githubAuth.authenticated) {
+      VZ.utils.notify('Please sign in first', 'warning');
+      return;
+    }
+
+    this.loadingRepos = true;
+    try {
+      const res = await fetch('/api/repos?per_page=50&type=all');
+      if (!res.ok) {
+        if (res.status === 401) {
+          this.githubAuth = { authenticated: false, user: null };
+          VZ.utils.notify('Session expired. Please sign in again.', 'warning');
+          return;
+        }
+        throw new Error('Failed to fetch repositories');
+      }
+      this.userRepos = await res.json();
+      VZ.utils.notify(`Found ${this.userRepos.length} repositories`, 'success');
+    } catch (err) {
+      VZ.utils.notify(err.message, 'error');
+    } finally {
+      this.loadingRepos = false;
+    }
+  },
+
+  async selectRepo(repo) {
+    this.githubUrl = repo.clone_url;
+    this.githubBranch = repo.default_branch || 'main';
+    VZ.utils.notify(`Selected: ${repo.full_name}`, 'info');
+
+    // Auto-clone on selection
+    await this.uploadFromGitHub();
   }
 };

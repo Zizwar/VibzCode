@@ -2,11 +2,13 @@ import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 import { cors } from 'hono/cors'
 import { serveStatic } from "@hono/node-server/serve-static";
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import AdmZip from 'adm-zip'
 import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import crypto from 'crypto'
 import beautify from 'js-beautify'
 import stripComments from 'strip-comments'
 import dotenv from 'dotenv'
@@ -17,6 +19,15 @@ dotenv.config()
 
 const app = new Hono()
 const PORT = process.env.PORT || 8080;
+
+// GitHub OAuth Config
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'https://app.vibzcode.online/auth/github/callback';
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+
+// Simple in-memory session store
+const sessions = new Map();
 
 app.use('/*', cors())
 app.use("/js/*", serveStatic({ root: "./public" }));
@@ -68,6 +79,47 @@ if (!fs.existsSync(appConfigPath)) {
 }
 
 // ============================================
+// SESSION HELPERS
+// ============================================
+
+function getSession(c) {
+  const sessionId = getCookie(c, 'session_id');
+  if (!sessionId) return null;
+  return sessions.get(sessionId) || null;
+}
+
+function createSession(c, data) {
+  const sessionId = crypto.randomBytes(32).toString('hex');
+  sessions.set(sessionId, { ...data, createdAt: Date.now() });
+  setCookie(c, 'session_id', sessionId, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Lax',
+    maxAge: 60 * 60 * 24 * 30 // 30 days
+  });
+  return sessionId;
+}
+
+function updateSession(c, data) {
+  const sessionId = getCookie(c, 'session_id');
+  if (!sessionId) return false;
+  const existing = sessions.get(sessionId);
+  if (existing) {
+    sessions.set(sessionId, { ...existing, ...data });
+    return true;
+  }
+  return false;
+}
+
+function destroySession(c) {
+  const sessionId = getCookie(c, 'session_id');
+  if (sessionId) {
+    sessions.delete(sessionId);
+    deleteCookie(c, 'session_id');
+  }
+}
+
+// ============================================
 // HELPERS
 // ============================================
 
@@ -77,10 +129,22 @@ async function fetchFileFromUrl(url) {
   return await response.arrayBuffer();
 }
 
-async function fetchFromGitHub(url, branch = 'main') {
+async function fetchFromGitHub(url, branch = 'main', accessToken = null) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'github-'));
   try {
-    execSync(`git clone --depth 1 --branch ${branch} ${url} ${tempDir}`, { stdio: 'inherit' });
+    let cloneUrl = url;
+
+    // If access token provided, use authenticated URL
+    if (accessToken) {
+      // Convert https://github.com/user/repo to https://TOKEN@github.com/user/repo
+      cloneUrl = url.replace('https://github.com', `https://${accessToken}@github.com`);
+    }
+
+    execSync(`git clone --depth 1 --branch ${branch} ${cloneUrl} ${tempDir}`, {
+      stdio: 'inherit',
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+    });
+
     const zip = new AdmZip();
     const addFilesToZip = (dir, zipPath = '') => {
       const files = fs.readdirSync(dir, { withFileTypes: true });
@@ -153,6 +217,163 @@ function getMaxFileSize() {
 }
 
 // ============================================
+// GITHUB OAUTH AUTHENTICATION
+// ============================================
+
+// Initiate GitHub OAuth flow
+app.get('/auth/github', (c) => {
+  if (!GITHUB_CLIENT_ID) {
+    return c.json({ error: 'GitHub OAuth not configured. Set GITHUB_CLIENT_ID in .env' }, 500);
+  }
+
+  const state = crypto.randomBytes(32).toString('hex');
+
+  // Store state in session for CSRF protection
+  createSession(c, { oauthState: state });
+
+  const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_CALLBACK_URL)}&scope=repo&state=${state}`;
+
+  return c.redirect(authUrl);
+});
+
+// GitHub OAuth callback
+app.get('/auth/github/callback', async (c) => {
+  try {
+    const code = c.req.query('code');
+    const state = c.req.query('state');
+
+    if (!code) {
+      return c.json({ error: 'No authorization code received' }, 400);
+    }
+
+    // Verify state for CSRF protection
+    const session = getSession(c);
+    if (!session || session.oauthState !== state) {
+      return c.json({ error: 'Invalid state parameter' }, 400);
+    }
+
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: GITHUB_CLIENT_ID,
+        client_secret: GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: GITHUB_CALLBACK_URL
+      })
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (tokenData.error) {
+      return c.json({ error: tokenData.error_description || 'Failed to get access token' }, 400);
+    }
+
+    const accessToken = tokenData.access_token;
+
+    // Get user info
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    const userData = await userResponse.json();
+
+    // Update session with user data and token
+    updateSession(c, {
+      accessToken,
+      githubUser: {
+        login: userData.login,
+        name: userData.name,
+        avatar_url: userData.avatar_url,
+        id: userData.id
+      },
+      authenticatedAt: Date.now()
+    });
+
+    // Redirect to main app
+    return c.redirect('/?auth=success');
+  } catch (error) {
+    console.error('GitHub OAuth error:', error);
+    return c.redirect('/?auth=error');
+  }
+});
+
+// Logout
+app.get('/auth/logout', (c) => {
+  destroySession(c);
+  return c.json({ success: true });
+});
+
+// Check authentication status
+app.get('/api/auth/status', (c) => {
+  const session = getSession(c);
+  if (session && session.accessToken) {
+    return c.json({
+      authenticated: true,
+      user: session.githubUser
+    });
+  }
+  return c.json({ authenticated: false });
+});
+
+// Get user's GitHub repositories
+app.get('/api/repos', async (c) => {
+  try {
+    const session = getSession(c);
+    if (!session || !session.accessToken) {
+      return c.json({ error: 'Not authenticated' }, 401);
+    }
+
+    const page = c.req.query('page') || '1';
+    const perPage = c.req.query('per_page') || '30';
+    const type = c.req.query('type') || 'all'; // all, owner, member
+
+    const response = await fetch(`https://api.github.com/user/repos?page=${page}&per_page=${perPage}&type=${type}&sort=updated`, {
+      headers: {
+        'Authorization': `Bearer ${session.accessToken}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!response.ok) {
+      return c.json({ error: 'Failed to fetch repositories' }, response.status);
+    }
+
+    const repos = await response.json();
+
+    // Return simplified repo data
+    const simplifiedRepos = repos.map(repo => ({
+      id: repo.id,
+      name: repo.name,
+      full_name: repo.full_name,
+      private: repo.private,
+      html_url: repo.html_url,
+      clone_url: repo.clone_url,
+      description: repo.description,
+      default_branch: repo.default_branch,
+      updated_at: repo.updated_at,
+      language: repo.language,
+      owner: {
+        login: repo.owner.login,
+        avatar_url: repo.owner.avatar_url
+      }
+    }));
+
+    return c.json(simplifiedRepos);
+  } catch (error) {
+    console.error('Error fetching repos:', error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// ============================================
 // FILE UPLOAD & MANAGEMENT
 // ============================================
 
@@ -170,7 +391,11 @@ app.post('/upload', async (c) => {
       filename = file.name;
     } else if (url) {
       if (url.includes('github.com')) {
-        buffer = await fetchFromGitHub(url, branch);
+        // Check if user is authenticated for private repos
+        const session = getSession(c);
+        const accessToken = session?.accessToken || null;
+
+        buffer = await fetchFromGitHub(url, branch, accessToken);
         filename = url.split('/').pop().replace(/\.git$/, '') + '.zip';
       } else {
         buffer = await fetchFileFromUrl(url);
