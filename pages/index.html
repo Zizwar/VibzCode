@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibZcode - منصة تحليل واستكشاف الكود بالذكاء الاصطناعي</title>
+    <meta name="description" content="حمّل مشاريعك من GitHub أو ZIP أو URL — تصفح الملفات، استخرج المحتوى، وتحدث مع نماذج AI حول الكود الخاص بك">
+
+    <!-- Tailwind CSS + DaisyUI -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .feature-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .code-bg {
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div class="navbar bg-base-100 shadow-lg sticky top-0 z-50">
+        <div class="flex-1">
+            <a href="#" class="btn btn-ghost text-xl">
+                <i class="fas fa-code text-primary"></i>
+                VibZcode
+            </a>
+        </div>
+        <div class="flex-none gap-2">
+            <a href="#features" class="btn btn-ghost hidden md:inline-flex">المميزات</a>
+            <a href="#demo" class="btn btn-ghost hidden md:inline-flex">التجربة</a>
+            <a href="#tech" class="btn btn-ghost hidden md:inline-flex">التقنيات</a>
+            <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="btn btn-primary">
+                <i class="fab fa-github"></i>
+                GitHub
+            </a>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="hero min-h-screen gradient-bg">
+        <div class="hero-content text-center text-white">
+            <div class="max-w-4xl">
+                <div class="float-animation mb-8">
+                    <i class="fas fa-robot text-9xl opacity-90"></i>
+                </div>
+                <h1 class="text-5xl md:text-7xl font-bold mb-6">
+                    VibZcode
+                </h1>
+                <p class="text-2xl md:text-3xl mb-4 font-semibold">
+                    منصة تحليل واستكشاف الكود بالذكاء الاصطناعي
+                </p>
+                <p class="text-lg md:text-xl mb-8 opacity-90">
+                    حمّل مشاريعك من GitHub، ZIP، أو URL — تصفح الملفات، استخرج المحتوى، وتحدث مع نماذج AI متعددة حول الكود الخاص بك
+                </p>
+                <div class="flex gap-4 justify-center flex-wrap">
+                    <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="btn btn-lg btn-primary">
+                        <i class="fab fa-github"></i>
+                        ابدأ الآن
+                    </a>
+                    <a href="#features" class="btn btn-lg btn-outline border-white text-white hover:bg-white hover:text-primary">
+                        <i class="fas fa-arrow-down"></i>
+                        اكتشف المزيد
+                    </a>
+                </div>
+                <div class="mt-12 flex gap-6 justify-center text-sm opacity-80">
+                    <div><i class="fas fa-check-circle"></i> مفتوح المصدر</div>
+                    <div><i class="fas fa-check-circle"></i> دعم المستودعات الخاصة</div>
+                    <div><i class="fas fa-check-circle"></i> نماذج AI متعددة</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div id="features" class="py-20 bg-base-200">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">المميزات الرئيسية</h2>
+                <p class="text-lg text-base-content/70">أدوات قوية لتحليل واستكشاف مشاريعك البرمجية</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="card bg-base-100 shadow-xl feature-card">
+                    <div class="card-body">
+                        <div class="text-5xl text-primary mb-4">
+                            <i class="fab fa-github"></i>
+                        </div>
+                        <h3 class="card-title text-2xl">استيراد من GitHub</h3>
+                        <p>استنساخ المستودعات العامة والخاصة مع دعم OAuth واختيار الفروع</p>
+                        <div class="badge badge-primary">جديد: دعم المستودعات الخاصة</div>
+                    </div>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="card bg-base-100 shadow-xl feature-card">
+                    <div class="card-body">
+                        <div class="text-5xl text-secondary mb-4">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h3 class="card-title text-2xl">ذكاء اصطناعي متعدد</h3>
+                        <p>دعم نماذج متعددة عبر OpenRouter: GPT-4، GPT-5، Grok، وغيرها</p>
+                        <div class="badge badge-secondary">Multi-Model</div>
+                    </div>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="card bg-base-100 shadow-xl feature-card">
+                    <div class="card-body">
+                        <div class="text-5xl text-accent mb-4">
+                            <i class="fas fa-folder-tree"></i>
+                        </div>
+                        <h3 class="card-title text-2xl">مستكشف ملفات ذكي</h3>
+                        <p>شجرة ملفات تفاعلية مع اكتشاف تلقائي للملفات المهمة والبحث السريع</p>
+                        <div class="badge badge-accent">Ctrl+K</div>
+                    </div>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="card bg-base-100 shadow-xl feature-card">
+                    <div class="card-body">
+                        <div class="text-5xl text-warning mb-4">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h3 class="card-title text-2xl">إجراءات سريعة</h3>
+                        <p>أزرار جاهزة: Explain، Find Bugs، Improve، Tests، Docs، Refactor</p>
+                        <div class="badge badge-warning">One-Click</div>
+                    </div>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="card bg-base-100 shadow-xl feature-card">
+                    <div class="card-body">
+                        <div class="text-5xl text-success mb-4">
+                            <i class="fas fa-memory"></i>
+                        </div>
+                        <h3 class="card-title text-2xl">Prompt Caching</h3>
+                        <p>تقليل تكاليف التوكنز عبر التخزين المؤقت للسياق</p>
+                        <div class="badge badge-success">Cost Saving</div>
+                    </div>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="card bg-base-100 shadow-xl feature-card">
+                    <div class="card-body">
+                        <div class="text-5xl text-info mb-4">
+                            <i class="fas fa-palette"></i>
+                        </div>
+                        <h3 class="card-title text-2xl">واجهة حديثة</h3>
+                        <p>DaisyUI + Alpine.js، responsive، Dark/Light mode، وتجربة مستخدم سلسة</p>
+                        <div class="badge badge-info">DaisyUI</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo Section -->
+    <div id="demo" class="py-20 bg-base-100">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">كيف يعمل؟</h2>
+                <p class="text-lg text-base-content/70">خطوات بسيطة للبدء</p>
+            </div>
+
+            <div class="grid md:grid-cols-5 gap-4 max-w-6xl mx-auto">
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-primary text-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4 font-bold">
+                        1
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">حمّل المشروع</h3>
+                    <p class="text-sm opacity-70">من GitHub، ZIP، أو URL</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-secondary text-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4 font-bold">
+                        2
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">تصفح الملفات</h3>
+                    <p class="text-sm opacity-70">شجرة تفاعلية مع بحث</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-accent text-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4 font-bold">
+                        3
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">اختر الملفات</h3>
+                    <p class="text-sm opacity-70">اختيار تلقائي أو يدوي</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-warning text-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4 font-bold">
+                        4
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">استخرج أو دردش</h3>
+                    <p class="text-sm opacity-70">دمج الملفات أو AI chat</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-success text-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4 font-bold">
+                        5
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">احصل على النتائج</h3>
+                    <p class="text-sm opacity-70">تحليل، شرح، أو تحسين</p>
+                </div>
+            </div>
+
+            <!-- Code Example -->
+            <div class="mt-16 max-w-4xl mx-auto">
+                <div class="code-bg rounded-lg p-6 shadow-2xl">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span class="mr-4 text-sm opacity-70">مثال على الاستخدام</span>
+                    </div>
+                    <pre class="text-sm"><code># تحميل مشروع من GitHub
+https://vibzcode.com/#https://github.com/user/repo
+
+# أو مباشرة
+https://vibzcode.com/get/https://github.com/user/repo
+
+# دعم المستودعات الخاصة مع GitHub OAuth
+🔐 تسجيل الدخول → اختر المستودع → تصفح بأمان</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div id="tech" class="py-20 bg-base-200">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">التقنيات المستخدمة</h2>
+                <p class="text-lg text-base-content/70">بناء على أحدث التقنيات</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+                <div class="card bg-base-100 shadow-lg">
+                    <div class="card-body items-center text-center">
+                        <i class="fab fa-node text-5xl text-green-600 mb-2"></i>
+                        <h3 class="font-bold">Node.js + Hono</h3>
+                        <p class="text-sm opacity-70">Fast web framework</p>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 shadow-lg">
+                    <div class="card-body items-center text-center">
+                        <i class="fab fa-js text-5xl text-yellow-500 mb-2"></i>
+                        <h3 class="font-bold">Alpine.js</h3>
+                        <p class="text-sm opacity-70">Lightweight reactive</p>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 shadow-lg">
+                    <div class="card-body items-center text-center">
+                        <i class="fas fa-palette text-5xl text-purple-600 mb-2"></i>
+                        <h3 class="font-bold">DaisyUI</h3>
+                        <p class="text-sm opacity-70">Tailwind components</p>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 shadow-lg">
+                    <div class="card-body items-center text-center">
+                        <i class="fas fa-robot text-5xl text-blue-600 mb-2"></i>
+                        <h3 class="font-bold">OpenRouter</h3>
+                        <p class="text-sm opacity-70">Multi-model AI API</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-12 text-center">
+                <div class="inline-flex flex-wrap gap-3 justify-center">
+                    <div class="badge badge-lg">Highlight.js</div>
+                    <div class="badge badge-lg">Marked.js</div>
+                    <div class="badge badge-lg">AdmZip</div>
+                    <div class="badge badge-lg">MongoDB</div>
+                    <div class="badge badge-lg">Font Awesome</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="py-20 bg-gradient-to-r from-primary to-secondary text-white">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6">جاهز للبدء؟</h2>
+            <p class="text-xl mb-8 opacity-90">انضم إلى مطوري VibZcode واستكشف مشاريعك بطريقة جديدة</p>
+            <div class="flex gap-4 justify-center flex-wrap">
+                <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="btn btn-lg bg-white text-primary hover:bg-gray-100">
+                    <i class="fab fa-github"></i>
+                    Star on GitHub
+                </a>
+                <a href="https://github.com/Zizwar/VibzCode/fork" target="_blank" class="btn btn-lg btn-outline border-white text-white hover:bg-white hover:text-primary">
+                    <i class="fas fa-code-branch"></i>
+                    Fork المشروع
+                </a>
+            </div>
+
+            <div class="mt-12 text-sm opacity-80">
+                <p>مفتوح المصدر بموجب ترخيص ISC</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer footer-center p-10 bg-base-200 text-base-content">
+        <div>
+            <i class="fas fa-code text-5xl text-primary mb-4"></i>
+            <p class="font-bold text-lg">
+                VibZcode v2.0
+            </p>
+            <p>منصة تحليل واستكشاف الكود بالذكاء الاصطناعي</p>
+            <p>صنع بـ <i class="fas fa-heart text-red-500"></i> بواسطة <a href="https://github.com/Zizwar" class="link link-primary" target="_blank">Ibrahim BIDI</a></p>
+        </div>
+        <div>
+            <div class="grid grid-flow-col gap-4">
+                <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="text-2xl hover:text-primary transition">
+                    <i class="fab fa-github"></i>
+                </a>
+                <a href="https://twitter.com/Zizwar" target="_blank" class="text-2xl hover:text-primary transition">
+                    <i class="fab fa-twitter"></i>
+                </a>
+                <a href="mailto:Zizwar@users.noreply.github.com" class="text-2xl hover:text-primary transition">
+                    <i class="fas fa-envelope"></i>
+                </a>
+            </div>
+        </div>
+        <div>
+            <p>Copyright © 2026 - جميع الحقوق محفوظة</p>
+        </div>
+    </footer>
+
+    <!-- Theme Toggle (Optional) -->
+    <div class="fixed bottom-4 left-4 z-50">
+        <button onclick="toggleTheme()" class="btn btn-circle btn-primary shadow-lg">
+            <i class="fas fa-moon" id="theme-icon"></i>
+        </button>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+
+            const icon = document.getElementById('theme-icon');
+            icon.className = newTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.getElementById('theme-icon').className = savedTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
