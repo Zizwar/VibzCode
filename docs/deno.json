@@ -1,0 +1,18 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-read main.ts",
+    "dev": "deno run --allow-net --allow-read --watch main.ts"
+  },
+  "imports": {
+    "hono": "https://deno.land/x/hono@v3.12.8/mod.ts"
+  },
+  "deploy": {
+    "project": "vibzcode-landing",
+    "entrypoint": "main.ts",
+    "include": [
+      "main.ts",
+      "index.html",
+      "pages/"
+    ]
+  }
+}
