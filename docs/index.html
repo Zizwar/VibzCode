@@ -23,8 +23,28 @@
             font-family: 'Cairo', sans-serif;
         }
 
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .hero-bg {
+            background-image: url('pages/images/bg_full.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+
+        .hero-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.85) 0%, rgba(118, 75, 162, 0.85) 100%);
+            z-index: 0;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
         }
 
         .feature-card {
@@ -64,35 +84,40 @@
             <a href="#features" class="btn btn-ghost hidden md:inline-flex">المميزات</a>
             <a href="#demo" class="btn btn-ghost hidden md:inline-flex">التجربة</a>
             <a href="#tech" class="btn btn-ghost hidden md:inline-flex">التقنيات</a>
-            <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="btn btn-primary">
+            <a href="https://app.vibzcode.com" target="_blank" class="btn btn-accent text-white hidden md:inline-flex">
+                <i class="fas fa-rocket"></i>
+                جرّب الآن
+            </a>
+            <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="btn btn-ghost">
                 <i class="fab fa-github"></i>
-                GitHub
+                <span class="hidden md:inline">GitHub</span>
             </a>
         </div>
     </div>
 
     <!-- Hero Section -->
-    <div class="hero min-h-screen gradient-bg">
+    <div class="hero min-h-screen hero-bg">
         <div class="hero-content text-center text-white">
             <div class="max-w-4xl">
-                <div class="float-animation mb-8">
-                    <i class="fas fa-robot text-9xl opacity-90"></i>
-                </div>
-                <h1 class="text-5xl md:text-7xl font-bold mb-6">
+                <h1 class="text-5xl md:text-7xl font-bold mb-6 drop-shadow-lg">
                     VibZcode
                 </h1>
-                <p class="text-2xl md:text-3xl mb-4 font-semibold">
+                <p class="text-2xl md:text-3xl mb-4 font-semibold drop-shadow-md">
                     منصة تحليل واستكشاف الكود بالذكاء الاصطناعي
                 </p>
-                <p class="text-lg md:text-xl mb-8 opacity-90">
+                <p class="text-lg md:text-xl mb-8 opacity-90 drop-shadow-md">
                     حمّل مشاريعك من GitHub، ZIP، أو URL — تصفح الملفات، استخرج المحتوى، وتحدث مع نماذج AI متعددة حول الكود الخاص بك
                 </p>
                 <div class="flex gap-4 justify-center flex-wrap">
-                    <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="btn btn-lg btn-primary">
-                        <i class="fab fa-github"></i>
-                        ابدأ الآن
+                    <a href="https://app.vibzcode.com" target="_blank" class="btn btn-lg btn-accent text-white shadow-xl hover:scale-105 transition-transform">
+                        <i class="fas fa-rocket"></i>
+                        جرّب التطبيق
                     </a>
-                    <a href="#features" class="btn btn-lg btn-outline border-white text-white hover:bg-white hover:text-primary">
+                    <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="btn btn-lg bg-white/20 backdrop-blur-sm text-white border-white/50 hover:bg-white hover:text-primary shadow-xl">
+                        <i class="fab fa-github"></i>
+                        GitHub
+                    </a>
+                    <a href="#features" class="btn btn-lg btn-outline border-white/70 text-white hover:bg-white hover:text-primary shadow-lg">
                         <i class="fas fa-arrow-down"></i>
                         اكتشف المزيد
                     </a>
@@ -250,13 +275,16 @@
                         <span class="mr-4 text-sm opacity-70">مثال على الاستخدام</span>
                     </div>
                     <pre class="text-sm"><code># تحميل مشروع من GitHub
-https://vibzcode.com/#https://github.com/user/repo
+https://app.vibzcode.com/#https://github.com/user/repo
 
 # أو مباشرة
-https://vibzcode.com/get/https://github.com/user/repo
+https://app.vibzcode.com/get/https://github.com/user/repo
 
 # دعم المستودعات الخاصة مع GitHub OAuth
-🔐 تسجيل الدخول → اختر المستودع → تصفح بأمان</code></pre>
+🔐 تسجيل الدخول → اختر المستودع → تصفح بأمان
+
+# جرّب الآن
+https://app.vibzcode.com</code></pre>
                 </div>
             </div>
         </div>
@@ -322,7 +350,11 @@ https://vibzcode.com/get/https://github.com/user/repo
             <h2 class="text-4xl md:text-5xl font-bold mb-6">جاهز للبدء؟</h2>
             <p class="text-xl mb-8 opacity-90">انضم إلى مطوري VibZcode واستكشف مشاريعك بطريقة جديدة</p>
             <div class="flex gap-4 justify-center flex-wrap">
-                <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="btn btn-lg bg-white text-primary hover:bg-gray-100">
+                <a href="https://app.vibzcode.com" target="_blank" class="btn btn-lg btn-accent text-white shadow-xl hover:scale-105 transition-transform">
+                    <i class="fas fa-rocket"></i>
+                    جرّب التطبيق مجاناً
+                </a>
+                <a href="https://github.com/Zizwar/VibzCode" target="_blank" class="btn btn-lg bg-white text-primary hover:bg-gray-100 shadow-lg">
                     <i class="fab fa-github"></i>
                     Star on GitHub
                 </a>
