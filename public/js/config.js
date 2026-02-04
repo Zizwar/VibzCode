@@ -14,6 +14,10 @@ VZ.configModule = {
   newModelName: '',
   newModelProvider: '',
   envConfig: {},
+  tempApiKey: '',
+  tempMaxFileSize: null,
+  tempDefaultModel: '',
+  showApiKey: false,
 
   enabledModels() {
     return (this.models || []).filter(m => m.enabled);
@@ -93,7 +97,20 @@ VZ.configModule = {
   async fetchEnvConfig() {
     try {
       const res = await fetch('/api/config/env');
-      if (res.ok) this.envConfig = await res.json();
+      if (res.ok) {
+        this.envConfig = await res.json();
+        // Load API key into temp field on first open
+        if (this.envConfig.OPENROUTER_API_KEY && !this.tempApiKey) {
+          this.tempApiKey = this.envConfig.OPENROUTER_API_KEY;
+        }
+        // Load other values
+        if (this.envConfig.MAX_FILE_SIZE_MB && !this.tempMaxFileSize) {
+          this.tempMaxFileSize = parseInt(this.envConfig.MAX_FILE_SIZE_MB);
+        }
+        if (this.envConfig.DEFAULT_AI_MODEL && !this.tempDefaultModel) {
+          this.tempDefaultModel = this.envConfig.DEFAULT_AI_MODEL;
+        }
+      }
     } catch (err) {
       console.error('Fetch env failed:', err);
     }
@@ -101,12 +118,34 @@ VZ.configModule = {
 
   async updateEnvConfig(key, value) {
     try {
+      // Don't send empty values
+      if (value === '' || !value) {
+        VZ.utils.notify('Please enter a value', 'warning');
+        return;
+      }
+
       await fetch('/api/config/env', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [key]: value })
       });
+
+      // Update local config with new value
+      this.envConfig[key] = value;
+
       VZ.utils.notify('Updated', 'success');
+
+      // Clear temp variables and reload if needed
+      if (key === 'OPENROUTER_API_KEY') {
+        this.showApiKey = false;
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else if (key === 'MAX_FILE_SIZE_MB') {
+        // Keep the value visible after save
+      } else if (key === 'DEFAULT_AI_MODEL') {
+        // Keep the value visible after save
+      }
     } catch (err) {
       VZ.utils.notify('Update failed', 'error');
     }

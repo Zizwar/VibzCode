@@ -13,6 +13,8 @@
   <script src="/js/utils.js"></script>
   <script src="/js/upload.js"></script>
   <script src="/js/filetree.js"></script>
+  <script src="/js/smart-chat.js"></script>
+  <script src="/js/smart-chat-examples.js"></script>
   <script src="/js/chat.js"></script>
   <script src="/js/config.js"></script>
   <script src="/js/app.js"></script>
@@ -175,19 +177,92 @@
 
         <!-- CHAT TAB -->
         <div x-show="currentTab === 'chat'" x-cloak class="flex flex-col flex-1 gap-2">
-          <select class="select select-bordered select-sm sm:hidden w-full" x-model="selectedModel">
-            <template x-for="m in enabledModels()" :key="m.id">
-              <option :value="m.id" x-text="m.name"></option>
+          <!-- Smart Chat Controls -->
+          <div class="flex gap-2 items-center flex-wrap">
+            <select class="select select-bordered select-sm sm:hidden flex-1" x-model="selectedModel">
+              <template x-for="m in enabledModels()" :key="m.id">
+                <option :value="m.id" x-text="m.name"></option>
+              </template>
+            </select>
+
+            <button
+              class="btn btn-sm gap-1.5"
+              :class="smartChatEnabled ? 'btn-primary' : 'btn-outline'"
+              @click="toggleSmartChat()"
+              :disabled="!currentFilename || !fileStructure">
+              <i class="fas fa-brain text-xs"></i>
+              <span class="hidden sm:inline" x-text="smartChatEnabled ? 'Smart Chat On' : 'Smart Chat Off'"></span>
+              <span class="sm:hidden" x-text="smartChatEnabled ? 'On' : 'Off'"></span>
+            </button>
+
+            <button
+              x-show="smartChatEnabled"
+              class="btn btn-ghost btn-sm btn-circle"
+              @click="showContextFiles = !showContextFiles"
+              :class="showContextFiles ? 'btn-active' : ''"
+              x-cloak>
+              <div class="indicator">
+                <i class="fas fa-file-code text-xs"></i>
+                <span
+                  x-show="VZ.smartChat && VZ.smartChat.contextFiles.size > 0"
+                  class="indicator-item badge badge-xs badge-primary"
+                  x-text="VZ.smartChat ? VZ.smartChat.contextFiles.size : 0"
+                  x-cloak></span>
+              </div>
+            </button>
+          </div>
+
+          <!-- Context Files Panel -->
+          <div
+            x-show="smartChatEnabled && showContextFiles && VZ.smartChat && VZ.smartChat.contextFiles.size > 0"
+            x-cloak
+            class="card bg-base-200 p-2 space-y-1 max-h-32 overflow-y-auto scrollbar-thin">
+            <div class="flex items-center justify-between px-1">
+              <span class="text-xs font-semibold opacity-60">Context Files</span>
+              <button class="btn btn-ghost btn-xs" @click="VZ.smartChat.clearContext(); updateContextFilesUI()">
+                <i class="fas fa-trash text-[10px]"></i>
+              </button>
+            </div>
+            <template x-for="file in VZ.smartChat.getContextFilesArray()" :key="file.path">
+              <div class="flex items-center gap-2 p-1.5 bg-base-300 rounded hover:bg-base-100 group">
+                <i :class="VZ.utils.getFileIcon(file.path)" class="text-xs w-4"></i>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs truncate font-mono" x-text="file.path"></div>
+                  <div class="text-[10px] opacity-50" x-text="file.lines + ' lines'"></div>
+                </div>
+                <button
+                  class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
+                  @click="removeContextFile(file.path)">
+                  <i class="fas fa-times text-xs text-error"></i>
+                </button>
+              </div>
             </template>
-          </select>
+          </div>
 
           <div id="chat-messages" class="flex-1 overflow-y-auto scrollbar-thin space-y-1 min-h-[300px] max-h-[calc(100vh-260px)]">
             <!-- Empty state -->
-            <div x-show="chatMessages.length === 0" class="flex flex-col items-center justify-center h-full text-base-content/30 gap-3 py-12">
+            <div x-show="chatMessages.length === 0" class="flex flex-col items-center justify-center h-full text-base-content/30 gap-3 py-8">
               <i class="fas fa-robot text-5xl"></i>
-              <p class="text-sm">Chat with AI about your code</p>
-              <p class="text-xs opacity-60">Select files & extract first, then ask questions</p>
-              <div class="flex flex-wrap gap-2 justify-center mt-2" x-show="selectedFiles.length > 0">
+              <p class="text-sm font-semibold" x-text="smartChatEnabled ? 'Smart Chat Active - Ask me anything!' : 'Chat with AI about your code'"></p>
+              <p class="text-xs opacity-60" x-show="!smartChatEnabled">Select files & extract first, or enable Smart Chat</p>
+
+              <!-- Smart Chat Examples -->
+              <div x-show="smartChatEnabled && VZ.smartChatExamples" class="w-full max-w-md space-y-2 mt-2" x-cloak>
+                <p class="text-xs text-center opacity-60">Try asking:</p>
+                <div class="grid grid-cols-1 gap-1.5">
+                  <template x-for="q in VZ.smartChatExamples.getStarterQuestions().slice(0, 4)" :key="q">
+                    <button
+                      class="btn btn-xs btn-outline text-left justify-start normal-case h-auto py-2 px-3"
+                      @click="chatInput = q; sendMessage()">
+                      <i class="fas fa-lightbulb text-xs mr-1"></i>
+                      <span class="text-xs" x-text="q"></span>
+                    </button>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Quick Actions (non-smart chat) -->
+              <div class="flex flex-wrap gap-2 justify-center mt-2" x-show="!smartChatEnabled && selectedFiles.length > 0" x-cloak>
                 <button class="btn btn-xs btn-outline" @click="runQuickAction('explain')">Explain</button>
                 <button class="btn btn-xs btn-outline" @click="runQuickAction('bugs')">Find Bugs</button>
                 <button class="btn btn-xs btn-outline" @click="runQuickAction('improve')">Improve</button>
@@ -195,18 +270,27 @@
             </div>
 
             <template x-for="(msg, i) in chatMessages" :key="i">
-              <div class="fade-in" :class="msg.role === 'user' ? 'chat chat-end' : 'chat chat-start'">
-                <div class="chat-header text-[10px] opacity-50 mb-0.5">
-                  <span x-text="msg.role === 'user' ? 'You' : (msg.model || 'AI')"></span>
-                  <span x-show="msg.cached" class="badge badge-xs badge-ghost ml-1">cached</span>
+              <div class="fade-in" :class="msg.role === 'system' ? '' : (msg.role === 'user' ? 'chat chat-end' : 'chat chat-start')">
+                <!-- System Messages (Smart Chat Init) -->
+                <div x-show="msg.role === 'system'" class="alert alert-info shadow-sm text-xs mb-2 py-2">
+                  <i class="fas fa-brain"></i>
+                  <div class="chat-md flex-1" x-html="renderMarkdown(msg.content)"></div>
                 </div>
-                <div class="chat-bubble max-w-[85%] text-sm"
-                  :class="msg.role === 'user' ? 'chat-bubble-primary' : (msg.isError ? 'chat-bubble-error' : '')">
-                  <div x-show="msg.role === 'user'" x-text="msg.content"></div>
-                  <div x-show="msg.role !== 'user'" class="chat-md" x-html="renderMarkdown(msg.content)"></div>
-                </div>
-                <div class="chat-footer text-[10px] opacity-30" x-show="msg.usage">
-                  <span x-text="msg.usage ? msg.usage.total_tokens + ' tokens' : ''"></span>
+
+                <!-- User & Assistant Messages -->
+                <div x-show="msg.role !== 'system'">
+                  <div class="chat-header text-[10px] opacity-50 mb-0.5">
+                    <span x-text="msg.role === 'user' ? 'You' : (msg.model || 'AI')"></span>
+                    <span x-show="msg.cached" class="badge badge-xs badge-ghost ml-1">cached</span>
+                  </div>
+                  <div class="chat-bubble max-w-[85%] text-sm"
+                    :class="msg.role === 'user' ? 'chat-bubble-primary' : (msg.isError ? 'chat-bubble-error' : '')">
+                    <div x-show="msg.role === 'user'" x-text="msg.content"></div>
+                    <div x-show="msg.role !== 'user'" class="chat-md" x-html="renderMarkdown(msg.content)"></div>
+                  </div>
+                  <div class="chat-footer text-[10px] opacity-30" x-show="msg.usage">
+                    <span x-text="msg.usage ? msg.usage.total_tokens + ' tokens' : ''"></span>
+                  </div>
                 </div>
               </div>
             </template>
@@ -594,24 +678,63 @@
         <div role="tabpanel" class="tab-content p-4 space-y-4">
           <div class="form-control">
             <label class="label py-1"><span class="label-text text-sm">OpenRouter API Key</span></label>
-            <input type="password" class="input input-bordered input-sm"
-              :value="envConfig.OPENROUTER_API_KEY || ''"
-              @change="updateEnvConfig('OPENROUTER_API_KEY', $event.target.value)"
-              placeholder="sk-or-v1-...">
-            <label class="label py-0.5"><span class="label-text-alt text-[10px] opacity-50">Get key from openrouter.ai</span></label>
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <input
+                  :type="showApiKey ? 'text' : 'password'"
+                  class="input input-bordered input-sm w-full pr-10"
+                  x-model="tempApiKey"
+                  :placeholder="!tempApiKey && !envConfig.OPENROUTER_API_KEY ? 'sk-or-v1-...' : ''"
+                  @focus="if (!tempApiKey && envConfig.OPENROUTER_API_KEY) tempApiKey = envConfig.OPENROUTER_API_KEY">
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs btn-circle absolute right-1 top-1/2 -translate-y-1/2"
+                  @click="showApiKey = !showApiKey"
+                  x-show="tempApiKey || envConfig.OPENROUTER_API_KEY"
+                  x-cloak>
+                  <i class="fas text-xs" :class="showApiKey ? 'fa-eye-slash' : 'fa-eye'"></i>
+                </button>
+              </div>
+              <button class="btn btn-primary btn-sm"
+                @click="updateEnvConfig('OPENROUTER_API_KEY', tempApiKey)"
+                :disabled="!tempApiKey || tempApiKey === envConfig.OPENROUTER_API_KEY">
+                <i class="fas fa-save text-xs"></i> Save
+              </button>
+            </div>
+            <label class="label py-0.5">
+              <span class="label-text-alt text-[10px] opacity-50">Get key from openrouter.ai</span>
+              <span class="label-text-alt text-[10px] text-success" x-show="envConfig.OPENROUTER_API_KEY" x-cloak>
+                <i class="fas fa-check"></i> Key configured
+              </span>
+            </label>
           </div>
           <div class="form-control">
             <label class="label py-1"><span class="label-text text-sm">Max Upload Size (MB)</span></label>
-            <input type="number" class="input input-bordered input-sm w-32"
-              :value="envConfig.MAX_FILE_SIZE_MB || 50"
-              @change="updateEnvConfig('MAX_FILE_SIZE_MB', $event.target.value)">
+            <div class="flex gap-2">
+              <input type="number" class="input input-bordered input-sm w-32"
+                x-model.number="tempMaxFileSize"
+                @focus="if (!tempMaxFileSize && envConfig.MAX_FILE_SIZE_MB) tempMaxFileSize = parseInt(envConfig.MAX_FILE_SIZE_MB)"
+                placeholder="50">
+              <button class="btn btn-primary btn-sm"
+                @click="updateEnvConfig('MAX_FILE_SIZE_MB', tempMaxFileSize)"
+                :disabled="!tempMaxFileSize || tempMaxFileSize == envConfig.MAX_FILE_SIZE_MB">
+                <i class="fas fa-save text-xs"></i> Save
+              </button>
+            </div>
           </div>
           <div class="form-control">
             <label class="label py-1"><span class="label-text text-sm">Default Model</span></label>
-            <input type="text" class="input input-bordered input-sm"
-              :value="envConfig.DEFAULT_AI_MODEL || ''"
-              @change="updateEnvConfig('DEFAULT_AI_MODEL', $event.target.value)"
-              placeholder="openai/gpt-5.1-codex-mini">
+            <div class="flex gap-2">
+              <input type="text" class="input input-bordered input-sm flex-1"
+                x-model="tempDefaultModel"
+                @focus="if (!tempDefaultModel && envConfig.DEFAULT_AI_MODEL) tempDefaultModel = envConfig.DEFAULT_AI_MODEL"
+                placeholder="openai/gpt-5.1-codex-mini">
+              <button class="btn btn-primary btn-sm"
+                @click="updateEnvConfig('DEFAULT_AI_MODEL', tempDefaultModel)"
+                :disabled="!tempDefaultModel || tempDefaultModel === envConfig.DEFAULT_AI_MODEL">
+                <i class="fas fa-save text-xs"></i> Save
+              </button>
+            </div>
           </div>
         </div>
       </div>

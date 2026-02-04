@@ -7,6 +7,109 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-02-04
+
+### 🧠 Smart Chat - Major Feature Addition
+
+This release introduces **Smart Chat**, an intelligent AI assistant that understands your project structure and can autonomously fetch and analyze files.
+
+### ✨ Added
+
+#### 🎯 Smart Chat System
+- **Intelligent Project Understanding**: AI automatically reads and understands project structure on activation
+- **Auto-fetch Important Files**: Automatically loads key files (package.json, README.md, deno.json, requirements.txt, etc.)
+- **Natural File Requests**: AI can fetch files on-demand when mentioned in conversation
+  - Example: "Let me read server.js" → file is automatically fetched
+  - Example: "Check the API routes" → relevant files are identified and loaded
+- **Context File Management**:
+  - Visual UI showing all loaded files in context
+  - Display file size, line count, and extension
+  - Ability to remove files from context individually or all at once
+  - Real-time context updates
+
+#### 🔍 Smart Understanding Features
+- **Folder Queries**: Ask "What's in the components folder?" and get accurate listings
+- **File Pattern Recognition**: AI understands file extensions and their purposes
+- **Dependency Awareness**: Analyzes files and understands relationships between them
+- **Structure-Aware Responses**: Uses project structure to provide better answers
+
+#### 🎨 User Interface Enhancements
+- **Smart Chat Toggle Button**: Easy activation/deactivation of Smart Chat mode
+- **Context Files Panel**: Expandable panel showing all loaded files
+- **Smart Suggestions**: Context-aware question suggestions based on project type
+- **Starter Questions**: Quick-start questions for new projects
+- **System Messages**: Initial context message showing project overview
+
+#### 📚 Documentation
+- **Comprehensive Smart Chat Guide** (`docs/SMART_CHAT_GUIDE.md`):
+  - Detailed feature explanations in Arabic and English
+  - Practical examples and use cases
+  - Advanced techniques and tips
+  - Troubleshooting section
+- **Quick Start Guide** (`QUICK_START_SMART_CHAT.md`):
+  - 30-second quick start tutorial
+  - Magic commands reference
+  - Golden tips for best usage
+  - Complete usage scenario
+- **Arabic Documentation** (`SMART_CHAT_AR.md`):
+  - Full feature guide in Arabic
+  - Examples and use cases
+  - UI explanations
+  - Tips and troubleshooting
+
+#### 🛠️ Technical Implementation
+- **New Module**: `smart-chat.js` - Core smart chat engine
+- **Examples Module**: `smart-chat-examples.js` - Pre-built examples and quick actions
+- **Enhanced Chat Module**: Updated `chat.js` with Smart Chat integration
+- **Server-Side Support**: Enhanced `/api/ai/chat` endpoint with structure awareness
+- **Improved Prompting**: Context-aware system prompts for better AI responses
+
+### 🎯 Smart Chat Capabilities
+
+1. **Project Analysis**:
+   - "What is this project?" → Analyzes package.json, README, and structure
+   - "Explain the architecture" → Reviews structure and key files
+   - "What technologies are used?" → Extracts dependencies and configs
+
+2. **File Navigation**:
+   - "What's in the src folder?" → Lists all files in src/
+   - "Where are the API files?" → Searches and identifies API-related files
+   - "Show important files" → Highlights key project files
+
+3. **Code Understanding**:
+   - "Read server.js and explain it" → Fetches and analyzes the file
+   - "How does authentication work?" → Finds and explains auth files
+   - "Explain the routing system" → Identifies and explains route files
+
+4. **Security & Quality**:
+   - "Are there security issues?" → Comprehensive security audit
+   - "How can I improve performance?" → Performance analysis
+   - "Review code quality" → Quality assessment with suggestions
+
+### 🔧 Enhanced Features
+- **Smarter System Prompts**: AI receives project structure and file availability info
+- **Auto-fetch Logic**: Pattern-based detection of file mentions in AI responses
+- **Context Optimization**: Efficient management of loaded files to minimize token usage
+- **File Extension Intelligence**: AI understands different file types and their roles
+
+### 📊 Performance Improvements
+- Files are fetched on-demand, reducing initial load time
+- Context is managed efficiently to optimize token usage
+- Structure is parsed once and reused throughout the session
+
+### 🐛 Bug Fixes
+- Fixed chat message rendering for system messages
+- Improved error handling for file fetch failures
+- Better session management for Smart Chat state
+
+### 🎨 UI/UX Improvements
+- Context files panel with file management
+- Visual indicators for Smart Chat status
+- Starter questions for better user onboarding
+- Improved empty state with context-aware suggestions
+
+---
+
 ## [1.0.0] - 2025-11-02
 
 ### 🎉 Major Release - Revolutionary AI-Powered Platform

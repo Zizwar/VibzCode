@@ -35,6 +35,13 @@ Upload projects from GitHub, ZIP, or URL — browse files, extract content, and 
 
 ### AI Chat
 - Multi-model support via [OpenRouter](https://openrouter.ai/) (GPT, Grok, and more)
+- **🧠 Smart Chat** (NEW!) — Intelligent AI that understands project structure and auto-fetches files
+  - Automatic structure analysis on activation
+  - Auto-loads important files (package.json, README, etc.)
+  - Natural file fetching: just ask "read server.js" and it loads automatically
+  - Context file management with visual UI
+  - Understands folder queries: "What's in the components folder?"
+  - Smart suggestions based on project type
 - **Prompt caching** (`cache_control: ephemeral`) to reduce token costs on repeated context
 - **Quick actions**: Explain, Find Bugs, Improve, Generate Tests, Documentation, Refactor
 - Markdown rendering with syntax highlighting and code copy buttons

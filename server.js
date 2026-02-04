@@ -612,7 +612,7 @@ app.put('/api/config/models', async (c) => {
 app.get('/api/config/env', (c) => {
   return c.json({
     STORAGE_MODE: process.env.STORAGE_MODE || 'local',
-    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ? '********' : '',
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '', // Return actual key
     DEFAULT_AI_MODEL: process.env.DEFAULT_AI_MODEL || '',
     MAX_FILE_SIZE_MB: process.env.MAX_FILE_SIZE_MB || '50',
   });
@@ -667,7 +667,7 @@ app.post('/api/ai/chat', async (c) => {
     }
 
     const body = await c.req.json();
-    const { message, model, contextFiles, projectId, enableCache } = body;
+    const { message, model, contextFiles, projectId, enableCache, smartChat, fileStructure } = body;
 
     if (!message) return c.json({ error: 'Message is required' }, 400);
 
@@ -680,11 +680,39 @@ app.post('/api/ai/chat', async (c) => {
     // Build messages with optional prompt caching
     const messages = [];
 
-    // System message
-    messages.push({
-      role: 'system',
-      content: 'You are VibZcode AI assistant. You help analyze, explain, and improve code. Be concise and precise. Use markdown formatting.'
-    });
+    // Smart system message for intelligent chat
+    if (smartChat) {
+      const smartSystemPrompt = `You are VibZcode Smart AI Assistant - an intelligent code analysis assistant.
+
+## Your Role
+- Analyze code with deep understanding
+- Help developers understand their projects
+- Provide actionable insights and improvements
+- Be concise but thorough
+
+## Available Data
+${fileStructure ? `**Project Structure:**\n\`\`\`\n${fileStructure}\n\`\`\`\n` : ''}
+${contextFiles ? `**Context Files:** Available in the conversation\n` : ''}
+
+## Communication Style
+- Use markdown formatting
+- Provide code examples when helpful
+- Be direct and precise
+- If you need to see a file, mention it naturally (e.g., "Let me check the package.json file")
+
+Remember: You're helping developers build better software. Be helpful and proactive!`;
+
+      messages.push({
+        role: 'system',
+        content: smartSystemPrompt
+      });
+    } else {
+      // Standard system message
+      messages.push({
+        role: 'system',
+        content: 'You are VibZcode AI assistant. You help analyze, explain, and improve code. Be concise and precise. Use markdown formatting.'
+      });
+    }
 
     // Context files (with cache_control if enabled)
     if (contextFiles) {
@@ -698,8 +726,8 @@ app.post('/api/ai/chat', async (c) => {
       messages.push({ role: 'assistant', content: 'I have the project files. What would you like to know?' });
     }
 
-    // Chat history
-    chatHistory.forEach(msg => {
+    // Chat history (filter out system messages to avoid duplication)
+    chatHistory.filter(msg => msg.role !== 'system').forEach(msg => {
       messages.push({ role: msg.role, content: msg.content });
     });
 

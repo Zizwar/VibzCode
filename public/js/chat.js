@@ -5,10 +5,26 @@ VZ.chat = {
   chatInput: '',
   chatLoading: false,
   chatProjectId: null,
+  smartChatEnabled: false,
+  showContextFiles: false,
 
   async sendMessage() {
     const msg = this.chatInput.trim();
     if (!msg || this.chatLoading) return;
+
+    // Process message with smart chat if enabled
+    let processedMessage = msg;
+    let autoLoadedFile = null;
+
+    if (this.smartChatEnabled && VZ.smartChat.structureLoaded) {
+      const processed = await VZ.smartChat.processUserMessage(msg, this.currentFilename);
+      processedMessage = processed.message;
+      autoLoadedFile = processed.autoLoaded;
+
+      if (processed.error) {
+        VZ.utils.notify(processed.error, 'warning');
+      }
+    }
 
     this.chatMessages.push({ role: 'user', content: msg });
     this.chatInput = '';
@@ -16,12 +32,22 @@ VZ.chat = {
     this.$nextTick(() => this.scrollChatToBottom());
 
     try {
+      // Build context with smart chat
+      let contextContent = '';
+      if (this.smartChatEnabled && VZ.smartChat.contextFiles.size > 0) {
+        contextContent = VZ.smartChat.buildContextSummary();
+      } else {
+        contextContent = this.mergedContent || '';
+      }
+
       const body = {
-        message: msg,
+        message: processedMessage,
         model: this.selectedModel,
-        contextFiles: this.mergedContent || '',
+        contextFiles: contextContent,
         projectId: this.chatProjectId || this.currentFilename,
-        enableCache: this.enableCache
+        enableCache: this.enableCache,
+        smartChat: this.smartChatEnabled,
+        fileStructure: this.smartChatEnabled && this.fileStructure ? VZ.smartChat.getFileStructureText(this.fileStructure) : null
       };
 
       const res = await fetch('/api/ai/chat', {
@@ -32,6 +58,14 @@ VZ.chat = {
 
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+
+      // Auto-fetch files mentioned by AI
+      if (this.smartChatEnabled && this.currentFilename) {
+        const fetchedCount = await VZ.smartChat.parseAndFetchRequestedFiles(data.response, this.currentFilename);
+        if (fetchedCount > 0) {
+          console.log(`Auto-fetched ${fetchedCount} files mentioned by AI`);
+        }
+      }
 
       this.chatMessages.push({
         role: 'assistant',
@@ -124,5 +158,76 @@ VZ.chat = {
     this.currentTab = 'chat';
     this.chatInput = prompts[action] || action;
     await this.sendMessage();
+  },
+
+  // Smart Chat Methods
+  async initSmartChat() {
+    if (!this.currentFilename || !this.fileStructure) {
+      VZ.utils.notify('Load a project first', 'warning');
+      return;
+    }
+
+    try {
+      this.chatLoading = true;
+      VZ.smartChat.importantFiles = this.importantFiles || [];
+      const initialContext = await VZ.smartChat.initializeWithProject(
+        this.currentFilename,
+        this.fileStructure
+      );
+
+      this.smartChatEnabled = true;
+
+      // Add system message
+      this.chatMessages.push({
+        role: 'system',
+        content: initialContext,
+        timestamp: Date.now()
+      });
+
+      this.currentTab = 'chat';
+      VZ.utils.notify('Smart Chat initialized!', 'success');
+
+      this.$nextTick(() => {
+        this.scrollChatToBottom();
+        this.highlightChatCode();
+      });
+    } catch (error) {
+      VZ.utils.notify('Failed to initialize Smart Chat: ' + error.message, 'error');
+    } finally {
+      this.chatLoading = false;
+    }
+  },
+
+  toggleSmartChat() {
+    if (!this.smartChatEnabled) {
+      this.initSmartChat();
+    } else {
+      this.smartChatEnabled = false;
+      VZ.smartChat.clearContext();
+      VZ.utils.notify('Smart Chat disabled', 'info');
+    }
+  },
+
+  updateContextFilesUI() {
+    // Trigger Alpine reactivity
+    this.$nextTick(() => {
+      this.showContextFiles = VZ.smartChat.contextFiles.size > 0;
+    });
+  },
+
+  removeContextFile(filepath) {
+    VZ.smartChat.removeFromContext(filepath);
+    VZ.utils.notify(`Removed ${filepath} from context`, 'info');
+  },
+
+  async addFileToContext(filepath) {
+    if (!this.currentFilename) return;
+
+    try {
+      await VZ.smartChat.fetchAndAddFile(filepath, this.currentFilename);
+      VZ.utils.notify(`Added ${filepath} to context`, 'success');
+    } catch (error) {
+      VZ.utils.notify(`Failed to add ${filepath}`, 'error');
+    }
   }
 };
